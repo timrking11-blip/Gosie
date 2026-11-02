@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "BUJylCusZ2JmtLTOM2ANB"
+uri = "file://generated-artifacts/gosie-brand-kit/gosie-design-system.html"
+type = "html"
+title = "Gosie Brand System"
+description = "Self-contained interactive showcase for the Gosie working brand concept, with downloadable semantic CSS tokens, reusable interface primitives, and usage guidance."
+logical_id = "ce215089-aeec-4be9-9bb8-92c22b8a1f5c"
+content_hash = "sha256:b02144e3dbffa54e57d4dc2612279b80081343b9af246786eafb7f0863f4841d"
+size = 35513
+mtime_ms = 1793606754239
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/ce215089-aeec-4be9-9bb8-92c22b8a1f5c/5c346382-03ba-4ed9-80c1-9414e818bb70"
+storage_version_token = "1793606786231441"
+content_type = "text/html"
