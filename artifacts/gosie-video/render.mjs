@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,15 +8,23 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const workspace = path.resolve(here, "../..");
 const htmlPath = path.join(here, "render.html");
 const outputDir = path.join(workspace, "generated-artifacts/gosie-video-frames");
-const outputPath = path.join(workspace, "generated-artifacts/gosie-promo.mp4");
+const silentOutputPath = path.join(workspace, "generated-artifacts/gosie-promo.mp4");
+const narratedOutputPath = path.join(workspace, "generated-artifacts/gosie-promo-narrated.mp4");
 const fps = 24;
-const duration = 17;
+const duration = 18.5;
 const frameCount = Math.round(fps * duration);
 const port = 9227;
+const narration = [
+  { start: 0.15, text: "A little help for everything ahead." },
+  { start: 2.95, text: "Week Ahead shows a fictional week of plans and sample priorities." },
+  { start: 7.4, text: "Weekend Ahead shifts sample ideas with the social context you choose." },
+  { start: 11.8, text: "Sample interests, not personal history." },
+  { start: 15, text: "Private prototype. Release date to be announced." },
+];
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
-await mkdir(path.dirname(outputPath), { recursive: true });
+await mkdir(path.dirname(silentOutputPath), { recursive: true });
 
 const chrome = spawn(
   "/repl/tools/bin/chromium",
@@ -37,6 +46,16 @@ let socket;
 let nextId = 0;
 const pending = new Map();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", args, { stdio: "inherit" });
+    ffmpeg.once("error", reject);
+    ffmpeg.once("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}`)),
+    );
+  });
+}
 
 async function pollJson(url, timeoutMs = 20000) {
   const started = Date.now();
@@ -158,13 +177,59 @@ const ffmpegArgs = [
   "yuv420p",
   "-movflags",
   "+faststart",
-  outputPath,
+  silentOutputPath,
 ];
-await new Promise((resolve, reject) => {
-  const ffmpeg = spawn("ffmpeg", ffmpegArgs, { stdio: "inherit" });
-  ffmpeg.once("error", reject);
-  ffmpeg.once("exit", (code) =>
-    code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}`)),
+await runFfmpeg(ffmpegArgs);
+console.log(`Exported silent promo ${silentOutputPath} (${duration}s, 1280x720, ${fps}fps)`);
+
+const narrationDir = await mkdtemp(path.join(tmpdir(), "gosie-promo-narration-"));
+try {
+  const narrationArgs = [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    silentOutputPath,
+  ];
+  const narrationFilters = [];
+  const voiceInputs = [];
+
+  for (const [index, line] of narration.entries()) {
+    const textPath = path.join(narrationDir, `line-${index}.txt`);
+    await writeFile(textPath, line.text, "utf8");
+    narrationArgs.push("-f", "lavfi", "-i", `flite=textfile=${textPath}:voice=slt`);
+    const inputIndex = index + 1;
+    const delayMs = Math.round(line.start * 1000);
+    narrationFilters.push(`[${inputIndex}:a]adelay=${delayMs}|${delayMs}[voice${index}]`);
+    voiceInputs.push(`[voice${index}]`);
+  }
+
+  narrationFilters.push(
+    `${voiceInputs.join("")}amix=inputs=${narration.length}:duration=longest:dropout_transition=0,volume=1.1,alimiter=limit=0.95,apad=whole_dur=${duration},atrim=duration=${duration}[narration]`,
   );
-});
-console.log(`Exported ${outputPath} (${duration}s, 1280x720, ${fps}fps)`);
+  narrationArgs.push(
+    "-filter_complex",
+    narrationFilters.join(";"),
+    "-map",
+    "0:v:0",
+    "-map",
+    "[narration]",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-t",
+    String(duration),
+    "-movflags",
+    "+faststart",
+    narratedOutputPath,
+  );
+
+  await runFfmpeg(narrationArgs);
+  console.log(`Exported narrated promo ${narratedOutputPath} (${duration}s)`);
+} finally {
+  await rm(narrationDir, { recursive: true, force: true });
+}
