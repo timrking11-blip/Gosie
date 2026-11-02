@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -31,7 +31,7 @@ describe("resizable wrapper compatibility with the locked v2 dependency", () => 
       expect(handle).toHaveAttribute("tabindex", "0");
       expect(handle.querySelector("svg")).not.toBeNull();
       expect(container.querySelectorAll("[data-panel]")).toHaveLength(2);
-      handle.focus();
+      act(() => handle.focus());
       expect(handle).toHaveFocus();
     },
   );
