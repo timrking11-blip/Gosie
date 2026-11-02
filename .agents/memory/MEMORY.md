@@ -1,1 +1,2 @@
 - [Migration environment](migration-environment.md) — failed auto-scaffolding can leave artifact packages without a workspace root; testing helper availability differs from its skill.
+- [Post-merge service environment](post-merge-service-env.md) — standalone setup scripts may need to load required `PORT` and `BASE_PATH` values from the artifact manifest.

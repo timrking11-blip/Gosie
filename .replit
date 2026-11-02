@@ -4,5 +4,14 @@ modules = ["nodejs-24", "python-base-3.13"]
 runButton = "Project"
 
 [[ports]]
+localPort = 21101
+externalPort = 3000
+exposeLocalhost = true
+
+[[ports]]
 localPort = 23967
 externalPort = 80
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
