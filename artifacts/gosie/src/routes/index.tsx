@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Menu, X, Plus, Compass, SlidersHorizontal, Sparkles, MessageCircleHeart, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GooseMark, Wordmark } from "@/components/gosie/Logo";
@@ -7,7 +7,7 @@ import { WeekMock } from "@/components/gosie/WeekMock";
 import { WeekendMock } from "@/components/gosie/WeekendMock";
 
 const TITLE = "Gosie — A little help for everything ahead";
-const DESC = "Gosie is a warm, thoughtful personal-intelligence sidekick that brings your week's priorities and your weekend's possibilities together. In development.";
+const DESC = "Explore Gosie's personal-intelligence concept through illustrative demos: group sample events, re-rank fictional weekend ideas and open example explanations. Release date TBA.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,8 +58,14 @@ function Index() {
 
 function Header() {
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   return (
-    <header className="sticky top-0 z-40 border-b border-cream/10 bg-ink/85 backdrop-blur-md">
+    <header onKeyDown={(event) => {
+      if (event.key === "Escape" && open) {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    }} className="sticky top-0 z-40 border-b border-cream/10 bg-ink/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <a href="#top" aria-label="gosie. home"><Wordmark tone="cream" /></a>
         <nav aria-label="Main" className="hidden items-center gap-7 lg:flex">
@@ -68,7 +74,7 @@ function Header() {
           ))}
         </nav>
         <a href="#preview" className="hidden rounded-full bg-cream px-4 py-2 text-sm font-semibold text-forest transition-colors hover:bg-peach lg:inline-flex">Explore the preview</a>
-        <button className="rounded-md p-2 text-cream lg:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="mnav" onClick={() => setOpen(!open)}>
+        <button ref={menuButton} type="button" className="rounded-md p-2 text-cream lg:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="mnav" onClick={() => setOpen(!open)}>
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
@@ -97,7 +103,7 @@ function Hero() {
             Make more of the <em className="font-normal text-peach">life ahead.</em>
           </h1>
           <p className="mt-6 max-w-xl text-base text-cream/75 sm:text-lg">
-            Your plans, priorities, and possibilities—brought together by a thoughtful sidekick.
+            A concept for bringing plans, priorities, and possibilities together. Explore fictional examples below—not a connected personal app.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a href="#preview" className={btnPrimary}>Explore Gosie <ArrowRight className="h-4 w-4" /></a>
@@ -107,30 +113,31 @@ function Hero() {
 
         <div id="preview" className="mt-16 scroll-mt-24">
           <div className="rounded-[1.25rem] border border-cream/10 bg-ink/70 p-2 shadow-float">
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="flex gap-1.5" aria-hidden="true">
+            <div className="flex flex-wrap items-center gap-3 px-3 py-2">
+              <div className="hidden gap-1.5 sm:flex" aria-hidden="true">
                 <span className="h-2.5 w-2.5 rounded-full bg-cream/20" /><span className="h-2.5 w-2.5 rounded-full bg-cream/20" /><span className="h-2.5 w-2.5 rounded-full bg-cream/20" />
               </div>
-              <div role="tablist" aria-label="Preview" className="mx-auto flex rounded-full bg-cream/5 p-1 text-xs">
+              <div role="group" aria-label="Preview" className="mx-auto flex flex-wrap justify-center gap-1 rounded-2xl bg-cream/5 p-1 text-sm">
                 {(["week", "weekend"] as const).map((t) => (
-                  <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                    className={cn("rounded-full px-4 py-1.5 transition-colors", tab === t ? "bg-cream text-ink" : "text-cream/70 hover:text-cream")}>
+                  <button key={t} type="button" aria-pressed={tab === t} onClick={() => setTab(t)}
+                    className={cn("rounded-full px-3 py-2 transition-colors", tab === t ? "bg-cream text-ink" : "text-cream/80 hover:text-cream")}>
                     {t === "week" ? "Week Ahead" : "Weekend Ahead"}
                   </button>
                 ))}
               </div>
               <span className="hidden w-12 sm:block" />
             </div>
-            <div className="grid gap-2 lg:grid-cols-[1.6fr_1fr]">
-              <div className={cn(tab === "week" ? "block" : "hidden lg:block", "transition-opacity", tab !== "week" && "lg:opacity-60")}>
+            <p className="px-3 pb-3 text-xs leading-relaxed text-cream/75">Choose a preview on smaller screens. Both demos appear side by side on desktop.</p>
+            <div className="grid items-start gap-2 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <div className={tab === "week" ? "block" : "hidden lg:block"}>
                 <WeekMock />
               </div>
-              <div className={cn(tab === "weekend" ? "block" : "hidden lg:block", "transition-opacity", tab !== "weekend" && "lg:opacity-60")}>
-                <WeekendMock compact={tab !== "weekend"} />
+              <div className={tab === "weekend" ? "block" : "hidden lg:block"}>
+                <WeekendMock />
               </div>
             </div>
           </div>
-          <p className="mt-3 text-center text-xs text-cream/45">Illustrative preview · fictional data</p>
+          <p className="mt-3 text-center text-xs text-cream/75">Interactive website demos · fictional data · no connected accounts</p>
         </div>
       </div>
     </section>
@@ -149,14 +156,14 @@ function SectionHead({ eyebrow, title, children, light = false }: { eyebrow: str
 
 function Idea() {
   const pillars = [
-    { icon: Compass, t: "Clarity for work and real life", d: "One calm view of meetings, errands and the people who matter—so the important things don't get buried." },
-    { icon: Sparkles, t: "Possibilities for your weekends", d: "Ideas shaped around who you're with, what you can spend, and how far you'd like to go." },
-    { icon: SlidersHorizontal, t: "Recommendations you understand", d: "Every suggestion can explain itself. Adjust, dismiss, or rate it—and Gosie learns from you." },
+    { icon: Compass, t: "Clarity for work and real life", d: "Explore fictional meetings, personal plans and errands. Switch between category and chronological grouping." },
+    { icon: Sparkles, t: "Possibilities for your weekends", d: "Choose a social context to reorder sample ideas using preset scores. Budget, travel and pace are example assumptions, not editable preferences." },
+    { icon: SlidersHorizontal, t: "Recommendations you understand", d: "Open and close an example explanation for each fictional idea. The demo does not save feedback or learn from your activity." },
   ];
   return (
     <section id="idea" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-24 sm:py-32">
       <SectionHead eyebrow="The idea" title={<>More than a <em className="text-forest">calendar.</em></>}>
-        <p>Calendars tell you where to be. Gosie helps you make more of your life, not just manage your calendar—a curious, well-mannered companion that notices what's coming and offers a little help. Helpful, never intrusive.</p>
+        <p>Gosie's vision is a curious, well-mannered companion for the week and weekend ahead. This promotional website explores that concept with interactive, fictional examples—not live planning or personalised recommendations.</p>
       </SectionHead>
       <div className="mt-14 grid gap-5 md:grid-cols-3">
         {pillars.map(({ icon: I, t, d }) => (
@@ -169,7 +176,7 @@ function Idea() {
       </div>
       <p className="mt-10 flex items-center gap-3 text-sm text-forest">
         <MessageCircleHeart className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-        Gosie is being shaped with early testers. Their feedback decides what comes next.
+        Try the demo interactions below. The full product is in development; release date to be announced.
       </p>
     </section>
   );
@@ -181,10 +188,10 @@ function WeekSection() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-24 sm:py-32 lg:grid-cols-[1fr_1.4fr]">
         <div>
           <SectionHead light eyebrow="Week Ahead · executive clarity" title="See your week in perspective.">
-            <p>Work and personal plans, grouped the way you think. Switch between category and chronological views, spot the heavy days early, and get a short digest of what deserves attention first.</p>
+            <p>Explore a fictional week of work and personal plans. Switch between category and chronological views. The activity grid, priority rail and digest are static examples, not analysis of your calendar.</p>
           </SectionHead>
           <ul className="mt-8 space-y-3 text-sm text-cream/75">
-            {["Work / life balance at a glance", "Grouped by category or by day", "A priority rail for what matters most", "A calm weekly digest"].map((x) => (
+            {["Sample work / life metrics", "Switch grouping by category or by day", "An illustrative priority rail", "A written example of a weekly digest"].map((x) => (
               <li key={x} className="flex gap-3"><span className="mt-2 h-px w-5 bg-mist" />{x}</li>
             ))}
           </ul>
@@ -203,8 +210,8 @@ function WeekendSection() {
         <div className="order-1 lg:order-2">
           <p className="eyebrow text-peach">Weekend Ahead · life in motion</p>
           <h2 className="mt-4 text-4xl font-light leading-[1.05] tracking-tight sm:text-5xl">Leave a little room for <em className="text-peach">something good.</em></h2>
-          <p className="mt-5 text-base text-cream/70 sm:text-lg">A late jazz set, a restored film, a long lunch with friends. Tell Gosie who's coming—solo, friends, a date, a group—and watch the ideas re-rank. Budget, travel and pace stay in your hands.</p>
-          <p className="mt-6 text-sm text-cream/50">Try the pills on the card. Each idea can tell you why it's there.</p>
+          <p className="mt-5 text-base text-cream/80 sm:text-lg">A fictional jazz set, film night or long lunch. Choose solo, friends, a date or a group to see the sample ideas reorder using preset scores. Budget, travel and pace labels are fixed examples, not editable controls.</p>
+          <p className="mt-6 text-sm text-cream/75">Try the social-context buttons and open an example explanation. No live listings or personal history are used.</p>
         </div>
       </div>
     </section>
@@ -213,13 +220,13 @@ function WeekendSection() {
 
 function How() {
   const steps = [
-    { n: "01", t: "Tell Gosie what matters", d: "Set your balance between work and life, a weekend budget, how far you'll travel, and the kinds of things you enjoy." },
-    { n: "02", t: "Get a clear view", d: "Your week, grouped and prioritised. Your weekend, with a handful of ideas—each with a clear note on where it came from." },
-    { n: "03", t: "Choose what feels right", d: "Save, dismiss, or rate. Preferences stay editable, and nothing happens without you." },
+    { n: "01", t: "Choose a demo view", d: "Use the hero preview selector on smaller screens, or explore both demos side by side on desktop. All content is illustrative." },
+    { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores." },
+    { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. There are no save, dismiss or rate actions, editable preferences, or learned personalisation in this demo." },
   ];
   return (
     <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-24 sm:py-32">
-      <SectionHead eyebrow="How Gosie works" title="Three quiet steps." />
+      <SectionHead eyebrow="How this demo works" title="Three quiet steps." />
       <ol className="mt-14 grid gap-px overflow-hidden rounded-2xl border bg-border md:grid-cols-3">
         {steps.map((s) => (
           <li key={s.n} className="bg-card p-8">
@@ -231,8 +238,8 @@ function How() {
       </ol>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <div className="rounded-2xl bg-forest p-7 text-cream">
-          <p className="eyebrow text-sage">In the prototype</p>
-          <p className="mt-3 text-sm text-cream/80">Week Ahead and Weekend Ahead concepts, context-based re-ranking, preference controls, explanations, and save / dismiss / rate.</p>
+          <p className="eyebrow text-sage">Try on this website</p>
+          <p className="mt-3 text-sm text-cream/80">Hero preview selection, sample week grouping, social-context ranking of fictional weekend ideas, and example explanation toggles. No data is saved and no preferences are learned.</p>
         </div>
         <div className="rounded-2xl border border-dashed border-forest/30 p-7">
           <p className="eyebrow text-forest/70">Planned · future</p>
@@ -265,7 +272,7 @@ function Release() {
           <span className="h-1.5 w-1.5 rounded-full bg-gold" /> In development · Release date to be announced
         </span>
         <h2 className="mt-8 text-4xl font-light tracking-tight sm:text-6xl">The experience is <em className="text-peach">taking shape.</em></h2>
-        <p className="mx-auto mt-6 max-w-xl text-cream/70">Prototype in active testing. Public access is not yet open. We'd rather get it right than get it out early.</p>
+        <p className="mx-auto mt-6 max-w-xl text-cream/80">This website offers illustrative demos only. The full personal-intelligence app is not available here, and there is no product sign-up or calendar connection.</p>
         <a href="#preview" className={cn(btnPrimary, "mt-10")}>Explore the preview <ArrowRight className="h-4 w-4" /></a>
       </div>
     </section>
@@ -274,10 +281,10 @@ function Release() {
 
 function Faq() {
   const qs = [
-    ["What is Gosie?", "A personal-intelligence companion that brings together your Week Ahead—priorities, plans and balance—and your Weekend Ahead—ideas for time well spent—with suggestions you can understand and adjust."],
-    ["Is Gosie available now?", "Not yet. Gosie is in development and being tested as a private prototype. There's no public access or sign-up, and no release date has been set."],
-    ["Does Gosie connect to my calendar?", "Not today. Calendar integration is planned and being explored in limited testing only. If it becomes available, it will only ever connect with your explicit authorisation."],
-    ["How are suggestions chosen?", "From the preferences you set—who you're with, budget, travel distance, pace—and your feedback. Every idea carries a short 'why', and you can dismiss or rate anything."],
+    ["What is Gosie?", "A personal-intelligence concept for the week and weekend ahead. This promotional website contains fictional demos: select a hero preview, group sample events, change the social context of sample ideas, and open example explanations."],
+    ["Is Gosie available now?", "The website demos are available to explore. The full product is in development, with release date to be announced. This website has no product sign-up."],
+    ["Does Gosie connect to my calendar?", "No. All displayed events are fictional and there is no live calendar integration. Calendar connections are planned for the future, not implemented here."],
+    ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples; you cannot edit preferences, save, dismiss or rate ideas, or train a learning system here."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-5 py-24 sm:py-32">
@@ -307,7 +314,7 @@ function Footer() {
           <p className="mt-2 text-xs text-cream/45">Gosie is a working product name and identity.</p>
         </div>
         <div className="max-w-sm text-xs leading-relaxed text-cream/50">
-          <p>Designed with accessibility in mind and a privacy-first approach: your data should serve you, and connections happen only with your permission.</p>
+          <p>This website demonstrates fictional content. It does not connect to your calendar, collect personal preferences, or save feedback. Future connections are planned, not available here.</p>
           <p className="mt-3">© 2026 Gosie. All previews show fictional data.</p>
         </div>
       </div>

@@ -12,10 +12,12 @@ The pnpm-workspace skill referenced by the migration rubric was also unavailable
 **How to apply:** Inspect actual workspace files and dependencies after artifact creation.
 Supply only missing workspace configuration and avoid dangling template dependencies.
 
-The testing subagent callback rejected the documented `testing` configuration as unknown
-in this environment.
+Testing helper support can change within this project's sessions.
 
-**Why:** The available testing skill did not match the callback's supported kinds.
+**Why:** The documented `testing` configuration initially failed as unknown, but a later
+Build-mode assignment on 2026-11-02 accepted the same configuration and completed real
+browser interaction, responsive, and reduced-motion checks successfully.
 
-**How to apply:** If this remains unsupported, use executable component interaction tests,
-build checks, logs, and desktop/mobile screenshots; do not claim browser click testing occurred.
+**How to apply:** When browser verification is requested, try the current documented
+callback before repeating an old tooling-blocker claim. Report what actually ran.
+If unsupported, distinguish component tests and screenshots from real browser interaction.

@@ -103,6 +103,7 @@
   }
   h1, h2, h3 { font-family: var(--font-serif); font-optical-sizing: auto; }
   :focus-visible { outline: 2px solid var(--peach); outline-offset: 3px; border-radius: 6px; }
+  #idea :focus-visible, #how :focus-visible, #faq :focus-visible { outline-color: var(--forest); }
 }
 
 @utility bg-hero { background: var(--gradient-hero); }
