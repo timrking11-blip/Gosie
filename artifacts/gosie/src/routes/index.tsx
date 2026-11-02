@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Menu, X, Plus, Compass, SlidersHorizontal, Sparkles, MessageCircleHeart, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GooseMark, Wordmark } from "@/components/gosie/Logo";
+import { PromoVideo } from "@/components/gosie/PromoVideo";
 import { WeekMock } from "@/components/gosie/WeekMock";
 import { WeekendMock } from "@/components/gosie/WeekendMock";
 
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/")({
 });
 
 const nav = [
+  ["Watch", "#promo"],
   ["The idea", "#idea"],
   ["Week Ahead", "#week"],
   ["Weekend Ahead", "#weekend"],
@@ -73,7 +75,7 @@ function Header() {
             <a key={h} href={h} className="text-sm text-cream/70 transition-colors hover:text-cream">{l}</a>
           ))}
         </nav>
-        <a href="#preview" className="hidden rounded-full bg-cream px-4 py-2 text-sm font-semibold text-forest transition-colors hover:bg-peach lg:inline-flex">Explore the preview</a>
+        <a href="#promo" className="hidden rounded-full bg-cream px-4 py-2 text-sm font-semibold text-forest transition-colors hover:bg-peach lg:inline-flex">Watch the promo</a>
         <button ref={menuButton} type="button" className="rounded-md p-2 text-cream lg:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="mnav" onClick={() => setOpen(!open)}>
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
@@ -83,7 +85,7 @@ function Header() {
           {nav.map(([l, h]) => (
             <a key={h} href={h} onClick={() => setOpen(false)} className="block border-b border-cream/5 py-3 font-serif text-lg text-cream">{l}</a>
           ))}
-          <a href="#preview" onClick={() => setOpen(false)} className={cn(btnPrimary, "mt-5 w-full")}>Explore the preview</a>
+          <a href="#promo" onClick={() => setOpen(false)} className={cn(btnPrimary, "mt-5 w-full")}>Watch the promo</a>
         </nav>
       )}
     </header>
@@ -96,18 +98,34 @@ function Hero() {
     <section id="top" className="relative overflow-hidden bg-hero text-cream">
       <div className="pointer-events-none absolute right-[-10%] top-[-20%] h-[38rem] w-[38rem] rounded-full bg-moon" />
       <div className="relative mx-auto max-w-6xl px-5 pb-20 pt-16 sm:pt-24">
-        <div className="max-w-3xl animate-rise">
-          <GooseMark className="mb-8 h-12 w-12 animate-float" tone="cream" />
-          <p className="eyebrow text-sage">Personal intelligence, with a personal touch</p>
-          <h1 className="mt-5 text-[2.6rem] font-light leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-            Make more of the <em className="font-normal text-peach">life ahead.</em>
-          </h1>
-          <p className="mt-6 max-w-xl text-base text-cream/75 sm:text-lg">
-            A concept for bringing plans, priorities, and possibilities together. Explore fictional examples below—not a connected personal app.
-          </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="#preview" className={btnPrimary}>Explore Gosie <ArrowRight className="h-4 w-4" /></a>
-            <a href="#how" className={btnGhost}>See how it works</a>
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="max-w-3xl animate-rise">
+            <GooseMark className="mb-8 h-12 w-12 animate-float" tone="cream" />
+            <p className="eyebrow text-sage">Personal intelligence, with a personal touch</p>
+            <h1 className="mt-5 text-[2.6rem] font-light leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+              Make more of the <em className="font-normal text-peach">life ahead.</em>
+            </h1>
+            <p className="mt-6 max-w-xl text-base text-cream/75 sm:text-lg">
+              A concept for bringing plans, priorities, and possibilities together. Explore fictional examples below—not a connected personal app.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <a href="#promo" className={btnPrimary}>Watch the promo <ArrowRight className="h-4 w-4" /></a>
+              <a href="#how" className={btnGhost}>See how it works</a>
+            </div>
+          </div>
+
+          <div id="promo" className="scroll-mt-24">
+            <div className="mb-5 max-w-3xl">
+              <p className="eyebrow text-sage">The Gosie promo</p>
+              <h2 className="mt-3 font-serif text-3xl font-light tracking-tight sm:text-4xl">A concept for everything ahead.</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-cream/75 sm:text-base">
+                Watch the introductory film. It presents illustrative examples of Gosie’s Week Ahead and Weekend Ahead concepts.
+              </p>
+            </div>
+            <PromoVideo />
+            <p className="mt-3 text-center text-xs leading-relaxed text-cream/65">
+              Fictional examples · no live calendar connection · product release date to be announced
+            </p>
           </div>
         </div>
 

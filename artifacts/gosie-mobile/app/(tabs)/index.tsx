@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import colors from '@/constants/colors';
+import { PromoVideo } from '@/components/PromoVideo';
 
 const C = colors.light;
 const events = [
@@ -99,6 +100,8 @@ function WeekScreen() {
           <Text style={styles.pageTitle}>Make more of the <Text style={styles.italicTitle}>life ahead.</Text></Text>
           <Text style={styles.introBody}>Your plans, priorities, and possibilities—brought together by a thoughtful sidekick.</Text>
         </View>
+
+        <PromoVideo />
 
         <View style={styles.weekPanel}>
           <View style={styles.weekPanelTop}>

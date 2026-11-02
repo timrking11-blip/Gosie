@@ -112,6 +112,24 @@ describe("Gosie demo interactions", () => {
     expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("shows the promo poster by default and loads controls after activation", () => {
+    const { container } = render(createElement(Route.options.component as ComponentType));
+    const promo = container.querySelector("#promo");
+    const playButton = within(promo as HTMLElement).getByRole("button", {
+      name: "Play the Gosie promotional video",
+    });
+    expect(playButton).toBeVisible();
+    expect(promo?.querySelector("video")).toBeNull();
+    fireEvent.click(playButton);
+    const video = promo?.querySelector("video");
+    expect(video).toHaveAttribute("controls");
+    expect(video).toHaveAttribute("playsinline");
+    expect(video).toHaveAttribute("autoplay");
+    expect(video).toHaveAttribute("preload", "auto");
+    expect(video).toHaveAttribute("poster", "/media/gosie-promo-poster.jpg");
+    expect(video?.querySelector("source")).toHaveAttribute("src", "/media/gosie-promo.mp4");
+  });
+
   it("closes the menu on Escape and restores focus to its disclosure button", () => {
     render(createElement(Route.options.component as ComponentType));
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
