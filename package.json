@@ -1,0 +1,8 @@
+{
+  "name": "gosie-workspace",
+  "private": true,
+  "packageManager": "pnpm@10.26.1",
+  "scripts": {
+    "test": "pnpm --filter @workspace/gosie test"
+  }
+}

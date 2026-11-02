@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Gosie"
+description = "Gosie is a thoughtful personal-intelligence sidekick for the week and weekend ahead. This website introduces the product and offers interactive previews of its planning experience."
+version = "1.0.0"
+id = "artifacts/gosie"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23967
+
+[services.development]
+run = "pnpm --filter @workspace/gosie run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gosie", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/gosie/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23967"
+BASE_PATH = "/"

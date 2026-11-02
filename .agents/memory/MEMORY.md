@@ -1,0 +1,1 @@
+- [Migration environment](migration-environment.md) — failed auto-scaffolding can leave artifact packages without a workspace root; testing helper availability differs from its skill.

@@ -1,0 +1,8 @@
+modules = ["nodejs-24"]
+
+[workflows]
+runButton = "Project"
+
+[[ports]]
+localPort = 23967
+externalPort = 80
