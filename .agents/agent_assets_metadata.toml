@@ -14,3 +14,17 @@ mtime_ms = 1793606754239
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/ce215089-aeec-4be9-9bb8-92c22b8a1f5c/5c346382-03ba-4ed9-80c1-9414e818bb70"
 storage_version_token = "1793606786231441"
 content_type = "text/html"
+
+[[outputs]]
+id = "XTV42ECh9Te_uXhwjrS9o"
+uri = "file://generated-artifacts/gosie-extracted-design-system/gosie-design-system.html"
+type = "html"
+title = "Gosie Extracted Design System"
+description = "Standalone visual reference for the current Gosie website, with interactive light/lunar/weekend examples and downloads for source-matched tokens, reusable styles, and docs/AGENTS.md."
+logical_id = "3c90cba1-4543-4a7d-86de-7eb9d4d6d203"
+content_hash = "sha256:6b93219a7ce3a72eae547529feec7bf99ccf72f47ac3407b1f7a266231b756b3"
+size = 26009
+mtime_ms = 1793608640372
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/3c90cba1-4543-4a7d-86de-7eb9d4d6d203/0630cf66-67d2-4422-96f3-638d36795695"
+storage_version_token = "1793608667328475"
+content_type = "text/html"
