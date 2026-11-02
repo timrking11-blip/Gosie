@@ -28,3 +28,17 @@ mtime_ms = 1793608640372
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/3c90cba1-4543-4a7d-86de-7eb9d4d6d203/0630cf66-67d2-4422-96f3-638d36795695"
 storage_version_token = "1793608667328475"
 content_type = "text/html"
+
+[[outputs]]
+id = "FMk7R8Sdc7oCfab87hH-y"
+uri = "file://generated-artifacts/gosie-promo.mp4"
+type = "video"
+title = "Gosie — Week & Weekend Ahead"
+description = "A 17-second animated showcase of Gosie’s Week Ahead and Weekend Ahead concepts. Uses fictional examples and clearly identifies the in-development private prototype."
+logical_id = "1f6b4b2f-ba74-4143-8541-628f8e717f22"
+content_hash = "sha256:ed18adbdcefd3e1bca47acbc38a52eaa2edabb2f1bef8e684f8296886a798bd2"
+size = 1214738
+mtime_ms = 1793606921164
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/1f6b4b2f-ba74-4143-8541-628f8e717f22/10ffd8b2-cafb-4e4a-9d11-ed12f040de85"
+storage_version_token = "1793606977469769"
+content_type = "video/mp4"

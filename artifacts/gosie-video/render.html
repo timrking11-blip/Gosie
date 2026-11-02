@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1280, initial-scale=1" />
+    <title>Gosie promo animation source</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --forest: oklch(0.31 0.045 167);
+        --sage: oklch(0.75 0.04 160);
+        --cream: oklch(0.955 0.015 85);
+        --peach: oklch(0.8 0.09 55);
+        --ink: oklch(0.17 0.015 245);
+        --midnight: oklch(0.19 0.02 260);
+        --slate: oklch(0.25 0.02 255);
+        --mist: oklch(0.8 0.04 235);
+        --gold: oklch(0.77 0.08 70);
+        --espresso: oklch(0.24 0.03 50);
+        --bronze: oklch(0.55 0.08 60);
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        width: 1280px;
+        height: 720px;
+        margin: 0;
+        overflow: hidden;
+        background: var(--ink);
+      }
+      canvas { display: block; width: 1280px; height: 720px; }
+      .font-loader {
+        position: fixed;
+        left: -10000px;
+        top: 0;
+        font-family: Fraunces, Manrope, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" width="1280" height="720" aria-label="Gosie animated showcase"></canvas>
+    <span class="font-loader">A little help for everything ahead.</span>
+    <script>
+      const canvas = document.getElementById("stage");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const C = {
+        forest: "oklch(0.31 0.045 167)",
+        sage: "oklch(0.75 0.04 160)",
+        cream: "oklch(0.955 0.015 85)",
+        peach: "oklch(0.8 0.09 55)",
+        ink: "oklch(0.17 0.015 245)",
+        midnight: "oklch(0.19 0.02 260)",
+        slate: "oklch(0.25 0.02 255)",
+        mist: "oklch(0.8 0.04 235)",
+        gold: "oklch(0.77 0.08 70)",
+        espresso: "oklch(0.24 0.03 50)",
+        bronze: "oklch(0.55 0.08 60)",
+        card: "oklch(0.975 0.01 85)",
+      };
+      const W = 1280;
+      const H = 720;
+      const SCENES = [
+        { start: 0, end: 2.8, draw: opening },
+        { start: 2.8, end: 7.25, draw: week },
+        { start: 7.25, end: 11.75, draw: weekend },
+        { start: 11.75, end: 14.15, draw: explanation },
+        { start: 14.15, end: 17, draw: close },
+      ];
+      const TRANSITION = 0.42;
+
+      function clamp(value, min = 0, max = 1) {
+        return Math.max(min, Math.min(max, value));
+      }
+      function ease(value) {
+        const x = clamp(value);
+        return x * x * (3 - 2 * x);
+      }
+      function slide(value, distance = 28) {
+        return (1 - ease(value)) * distance;
+      }
+      function rounded(x, y, w, h, r, fill, stroke) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      function text(value, x, y, size, color, options = {}) {
+        const {
+          family = "Manrope",
+          weight = 500,
+          align = "left",
+          italic = false,
+          alpha = 1,
+        } = options;
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        ctx.fillStyle = color;
+        ctx.textAlign = align;
+        ctx.textBaseline = "alphabetic";
+        ctx.font = `${italic ? "italic " : ""}${weight} ${size}px "${family}"`;
+        ctx.fillText(value, x, y);
+        ctx.restore();
+      }
+      function tracked(value, x, y, color, options = {}) {
+        const { size = 12, spacing = 2.2, weight = 700, alpha = 0.8 } = options;
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        ctx.fillStyle = color;
+        ctx.font = `${weight} ${size}px "Manrope"`;
+        ctx.textBaseline = "alphabetic";
+        let at = x;
+        for (const letter of value) {
+          ctx.fillText(letter, at, y);
+          at += ctx.measureText(letter).width + spacing;
+        }
+        ctx.restore();
+      }
+      function line(x1, y1, x2, y2, color, width = 1) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+      }
+      function pill(label, x, y, w, fill, foreground, options = {}) {
+        const { stroke = null, size = 13, height = 34, weight = 600 } = options;
+        rounded(x, y, w, height, height / 2, fill, stroke);
+        text(label, x + w / 2, y + height / 2 + size * 0.34, size, foreground, {
+          weight,
+          align: "center",
+        });
+      }
+      function logoMark(x, y, size, tone = "forest", opacity = 1) {
+        const bg = tone === "cream" ? C.cream : C.forest;
+        const fg = tone === "cream" ? C.forest : C.cream;
+        ctx.save();
+        ctx.globalAlpha *= opacity;
+        ctx.translate(x, y);
+        ctx.scale(size / 64, size / 64);
+        ctx.beginPath();
+        ctx.arc(32, 32, 32, 0, Math.PI * 2);
+        ctx.fillStyle = bg;
+        ctx.fill();
+        const neck = new Path2D(
+          "M22 52c-1-9 6-13 8-20 1.6-5.5-3-7.5-3-13 0-5 3.6-8.5 8-8.5 4 0 7 2.7 7.4 6.3-1.5 1.9-4 2.8-6.6 2.8-.6 4.4 3.8 8.6 3.8 15.4 0 7.5-6 12.5-17.6 17Z",
+        );
+        ctx.fillStyle = fg;
+        ctx.fill(neck);
+        ctx.beginPath();
+        ctx.moveTo(42.2, 15.6);
+        ctx.lineTo(49.8, 17.4);
+        ctx.lineTo(42.2, 19.8);
+        ctx.quadraticCurveTo(42.6, 17.7, 42.2, 15.6);
+        ctx.fillStyle = C.peach;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(37.2, 15.2, 1.3, 0, Math.PI * 2);
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.restore();
+      }
+      function wordmark(x, y, size, tone = "forest", opacity = 1) {
+        const wordColor = tone === "cream" ? C.cream : C.forest;
+        const markSize = size * 1.13;
+        logoMark(x, y - markSize * 0.77, markSize, tone, opacity);
+        text("gosie", x + markSize + 15, y, size, wordColor, {
+          family: "Fraunces",
+          weight: 500,
+          alpha: opacity,
+        });
+        const wordWidth = measure("gosie", size, "Fraunces", 500);
+        text(".", x + markSize + 15 + wordWidth - 1, y, size, C.peach, {
+          family: "Fraunces",
+          weight: 500,
+          alpha: opacity,
+        });
+      }
+      function measure(value, size, family = "Manrope", weight = 500) {
+        ctx.save();
+        ctx.font = `${weight} ${size}px "${family}"`;
+        const width = ctx.measureText(value).width;
+        ctx.restore();
+        return width;
+      }
+      function shell(bg, t, from = "#") {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.globalAlpha = 0.11;
+        ctx.fillStyle = C.sage;
+        ctx.beginPath();
+        ctx.arc(1105 + Math.sin(t * 0.7) * 18, 106, 285, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        line(72, 658, 1208, 658, "rgba(255,255,255,.12)", 1);
+        tracked("GOSIE", 74, 691, C.cream, { size: 9, spacing: 2, alpha: 0.5 });
+      }
+      function drawGrid(x, y, w, h, t) {
+        const days = ["MON", "TUE", "WED", "THU", "FRI"];
+        const evs = [
+          [{ title: "Planning review", tone: C.mist }, { title: "Climbing", tone: C.sage }],
+          [{ title: "Design critique", tone: C.mist }],
+          [{ title: "Dentist", tone: C.gold }, { title: "Board memo", tone: C.mist }],
+          [{ title: "Dinner", tone: C.sage }],
+          [{ title: "Passport form", tone: C.gold }],
+        ];
+        const gap = 8;
+        const colW = (w - gap * 4) / 5;
+        rounded(x, y, w, h, 16, "rgba(255,255,255,.055)", "rgba(255,255,255,.1)");
+        text("SAMPLE WEEK · 9 NOVEMBER", x + 20, y + 31, 11, C.mist, { weight: 700 });
+        for (let i = 0; i < days.length; i++) {
+          const cx = x + 18 + i * (colW + gap);
+          const entrance = ease((t - 0.3 - i * 0.09) / 0.38);
+          text(days[i], cx, y + 65 + slide(entrance, 8), 10, C.cream, { weight: 700, alpha: 0.78 * entrance });
+          line(cx, y + 78, cx + colW - 2, y + 78, "rgba(255,255,255,.13)");
+          evs[i].forEach((event, j) => {
+            const yy = y + 96 + j * 62 + slide(entrance, 15);
+            ctx.save();
+            ctx.globalAlpha *= entrance;
+            rounded(cx, yy, colW - 2, 48, 9, "rgba(255,255,255,.075)");
+            rounded(cx, yy, 4, 48, 2, event.tone);
+            text(event.title, cx + 11, yy + 21, 10, C.cream, { weight: 600 });
+            text(j === 0 ? (i === 4 ? "4:00 pm" : "9:30 am") : "6:00 pm", cx + 11, yy + 37, 9, C.cream, { alpha: 0.65 });
+            ctx.restore();
+          });
+        }
+      }
+      function opening(t) {
+        ctx.fillStyle = C.cream;
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        const p = ease(t / 0.6);
+        ctx.globalAlpha = p;
+        ctx.fillStyle = "oklch(0.92 0.02 120)";
+        ctx.beginPath();
+        ctx.arc(1044, 265, 250 + 8 * Math.sin(t * 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        const float = Math.sin(t * 2.1) * 5;
+        wordmark(98, 172 + slide(t / 0.75, 20) + float * 0.35, 52, "forest", ease(t / 0.65));
+        tracked("PERSONAL INTELLIGENCE, WITH A PERSONAL TOUCH", 99, 232, C.forest, {
+          size: 12,
+          spacing: 2,
+          alpha: ease((t - 0.35) / 0.45) * 0.78,
+        });
+        text("A little help for", 94, 346 + slide((t - 0.25) / 0.45), 55, C.ink, {
+          family: "Fraunces",
+          weight: 400,
+          alpha: ease((t - 0.25) / 0.45),
+        });
+        text("everything ahead.", 94, 410 + slide((t - 0.37) / 0.48), 55, C.forest, {
+          family: "Fraunces",
+          weight: 400,
+          italic: true,
+          alpha: ease((t - 0.37) / 0.48),
+        });
+        pill("Week Ahead", 100, 474, 140, "rgba(24,55,47,.1)", C.forest, { height: 38, size: 13 });
+        pill("Weekend Ahead", 253, 474, 164, "rgba(24,55,47,.1)", C.forest, { height: 38, size: 13 });
+        text("A concept for bringing plans, priorities, and possibilities together.", 100, 561, 15, "oklch(0.42 0.02 200)", {
+          weight: 500,
+          alpha: ease((t - 0.65) / 0.4),
+        });
+        // Quiet orbiting dots echo the original goose mark's calm, considered tone.
+        for (let i = 0; i < 5; i++) {
+          const angle = t * 0.42 + i * Math.PI * 0.4;
+          const x = 994 + Math.cos(angle) * (150 + 12 * Math.sin(t + i));
+          const y = 332 + Math.sin(angle) * 130;
+          ctx.beginPath();
+          ctx.arc(x, y, i % 2 === 0 ? 5 : 3, 0, Math.PI * 2);
+          ctx.fillStyle = i % 2 === 0 ? C.peach : C.sage;
+          ctx.globalAlpha = 0.65;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      function week(t) {
+        shell(C.ink, t);
+        tracked("WEEK AHEAD · EXECUTIVE CLARITY", 78, 83, C.sage, { size: 12, spacing: 2.3 });
+        text("See your week", 76, 157 + slide(t / 0.42), 46, C.cream, {
+          family: "Fraunces",
+          weight: 400,
+        });
+        text("in perspective.", 76, 208 + slide((t - 0.1) / 0.42), 46, C.peach, {
+          family: "Fraunces",
+          weight: 400,
+          italic: true,
+        });
+        text("A fictional week of work and personal plans.", 78, 242, 14, C.cream, { alpha: 0.72 });
+        drawGrid(76, 280, 702, 332, t);
+        const railX = 812;
+        const railY = 172 + slide((t - 0.22) / 0.45, 22);
+        const railFade = ease((t - 0.22) / 0.45);
+        ctx.save();
+        ctx.globalAlpha *= railFade;
+        rounded(railX, railY, 392, 354, 20, "rgba(255,255,255,.075)", "rgba(255,255,255,.14)");
+        tracked("SAMPLE PRIORITY RAIL", railX + 27, railY + 43, C.mist, { size: 11, spacing: 1.9 });
+        text("A few things to keep in view", railX + 27, railY + 80, 21, C.cream, { family: "Fraunces", weight: 400 });
+        [
+          ["1", "Board memo draft by Wed", "A clear midweek priority"],
+          ["2", "Confirm Thursday dinner", "A personal plan to protect"],
+          ["3", "Passport renewal", "A small task before Friday"],
+        ].forEach(([number, title, note], i) => {
+          const y = railY + 120 + i * 67 + slide((t - 0.38 - i * 0.1) / 0.3, 12);
+          rounded(railX + 22, y, 348, 55, 12, "rgba(255,255,255,.055)");
+          text(number, railX + 42, y + 35, 20, C.mist, { family: "Fraunces", weight: 500 });
+          text(title, railX + 72, y + 25, 13, C.cream, { weight: 700 });
+          text(note, railX + 72, y + 42, 10, C.cream, { alpha: 0.65 });
+        });
+        ctx.restore();
+        text("Illustrative preview · fictional events and metrics · no calendar connection", 78, 640, 11, C.cream, { alpha: 0.62 });
+      }
+      function weekend(t) {
+        ctx.fillStyle = C.espresso;
+        ctx.fillRect(0, 0, W, H);
+        const glow = ctx.createRadialGradient(300, 90, 10, 300, 90, 570);
+        glow.addColorStop(0, "rgba(237,173,135,.22)");
+        glow.addColorStop(1, "rgba(237,173,135,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+        tracked("WEEKEND AHEAD · LIFE IN MOTION", 77, 87, C.peach, { size: 12, spacing: 2.2 });
+        text("Leave a little room", 76, 172 + slide(t / 0.42), 43, C.cream, {
+          family: "Fraunces",
+          weight: 400,
+        });
+        text("for something good.", 76, 224 + slide((t - 0.08) / 0.42), 43, C.peach, {
+          family: "Fraunces",
+          weight: 400,
+          italic: true,
+        });
+        text("Sample ideas shift with the", 78, 277, 15, C.cream, { alpha: 0.78 });
+        text("social context you choose.", 78, 301, 15, C.cream, { alpha: 0.78 });
+        pill("Fictional ideas", 78, 343, 142, "rgba(255,255,255,.08)", C.cream, {
+          height: 34,
+          size: 12,
+          stroke: "rgba(255,255,255,.12)",
+        });
+        pill("Preset example scores", 78, 389, 198, "rgba(255,255,255,.08)", C.cream, {
+          height: 34,
+          size: 12,
+          stroke: "rgba(255,255,255,.12)",
+        });
+
+        const x = 494;
+        const y = 80 + slide((t - 0.12) / 0.44, 18);
+        const cardAlpha = ease((t - 0.12) / 0.44);
+        ctx.save();
+        ctx.globalAlpha *= cardAlpha;
+        rounded(x, y, 712, 532, 22, "rgba(35,30,28,.76)", "rgba(255,255,255,.13)");
+        text("Weekend Ahead", x + 30, y + 42, 11, C.peach, { weight: 700 });
+        text("Things to do", x + 30, y + 78, 27, C.cream, { family: "Fraunces", weight: 400 });
+        ["All", "Solo", "Friends", "Date", "Group"].forEach((label, i) => {
+          const widths = [58, 70, 94, 70, 80];
+          const px = x + 30 + widths.slice(0, i).reduce((sum, val) => sum + val + 8, 0);
+          const active = label === "Friends";
+          pill(label, px, y + 101, widths[i], active ? C.peach : "transparent", active ? C.espresso : C.cream, {
+            height: 34,
+            size: 12,
+            stroke: active ? null : "rgba(255,255,255,.18)",
+          });
+        });
+        text("Sample ranking for Friends · preset illustrative scores", x + 30, y + 168, 11, C.gold, { weight: 600 });
+        const cards = [
+          {
+            rank: "1",
+            type: "FOOD · SUN · MIDDAY",
+            title: "Long lunch, shared plates",
+            meta: "Example: $$ · 15 min travel",
+            score: "Sample fit: 10/10",
+            y: y + 191,
+          },
+          {
+            rank: "2",
+            type: "MUSIC · SAT · EVENING",
+            title: "Late set at a small jazz room",
+            meta: "Example: $$ · 20 min travel",
+            score: "Sample fit: 7/10",
+            y: y + 328,
+          },
+        ];
+        cards.forEach((item, i) => {
+          const entrance = ease((t - 0.3 - i * 0.12) / 0.35);
+          const yy = item.y + slide(entrance, 17);
+          rounded(x + 24, yy, 664, 116, 15, "rgba(255,255,255,.065)", "rgba(255,255,255,.1)");
+          text(item.rank, x + 46, yy + 45, 28, C.peach, { family: "Fraunces", weight: 500, alpha: entrance });
+          tracked(item.type, x + 86, yy + 30, C.gold, { size: 9, spacing: 1.2, alpha: entrance });
+          text(item.title, x + 86, yy + 58, 17, C.cream, {
+            family: "Fraunces",
+            weight: 400,
+            alpha: entrance,
+          });
+          text(item.meta, x + 86, yy + 84, 11, C.cream, { alpha: 0.72 * entrance });
+          text(item.score, x + 666, yy + 35, 10, C.peach, { align: "right", weight: 700, alpha: entrance });
+        });
+        text("Example assumptions · not editable", x + 30, y + 501, 10, C.cream, { alpha: 0.68 });
+        ctx.restore();
+        text("Fictional recommendations · not real listings, prices or availability", 78, 640, 11, C.cream, { alpha: 0.62 });
+      }
+      function explanation(t) {
+        ctx.fillStyle = C.cream;
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = C.sage;
+        ctx.beginPath();
+        ctx.arc(1050, 125, 300, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        tracked("RECOMMENDATIONS YOU UNDERSTAND", 78, 91, C.forest, { size: 12, spacing: 2.1 });
+        text("A suggestion", 78, 181 + slide(t / 0.43), 47, C.ink, { family: "Fraunces", weight: 400 });
+        text("should make sense.", 78, 235 + slide((t - 0.12) / 0.43), 47, C.forest, {
+          family: "Fraunces",
+          weight: 400,
+          italic: true,
+        });
+        const x = 590;
+        const y = 142 + slide((t - 0.18) / 0.45, 22);
+        const a = ease((t - 0.18) / 0.45);
+        ctx.save();
+        ctx.globalAlpha *= a;
+        rounded(x, y, 596, 352, 20, C.card, "rgba(24,55,47,.16)");
+        pill("SAMPLE IDEA", x + 28, y + 26, 112, "rgba(24,55,47,.08)", C.forest, {
+          height: 28,
+          size: 10,
+        });
+        text("Long lunch, shared plates", x + 29, y + 102, 27, C.ink, { family: "Fraunces", weight: 400 });
+        rounded(x + 26, y + 130, 544, 165, 14, "rgba(24,55,47,.055)", "rgba(24,55,47,.1)");
+        text("WHY THIS IDEA?", x + 48, y + 162, 10, C.forest, { weight: 700 });
+        text("Sample interest: relaxed meals together.", x + 48, y + 204, 16, C.ink, {
+          weight: 600,
+        });
+        text("Preset example scores put this fictional lunch", x + 48, y + 236, 13, "oklch(0.42 0.02 200)");
+        text("first for Friends and Group—not personal history.", x + 48, y + 258, 13, "oklch(0.42 0.02 200)");
+        ctx.restore();
+        text("Example explanations describe sample interests, not your activity.", 80, 573, 14, "oklch(0.42 0.02 200)");
+      }
+      function close(t) {
+        ctx.fillStyle = C.ink;
+        ctx.fillRect(0, 0, W, H);
+        const grad = ctx.createRadialGradient(950, 120, 10, 950, 120, 650);
+        grad.addColorStop(0, "rgba(24,55,47,.86)");
+        grad.addColorStop(1, "rgba(23,27,34,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+        const enter = ease(t / 0.55);
+        logoMark(606, 102 + slide(t / 0.5) + Math.sin(t * 2) * 3, 68, "cream", enter);
+        text("gosie", 682, 151 + slide(t / 0.5), 39, C.cream, {
+          family: "Fraunces",
+          weight: 500,
+          alpha: enter,
+        });
+        text(".", 790, 151 + slide(t / 0.5), 39, C.peach, {
+          family: "Fraunces",
+          weight: 500,
+          alpha: enter,
+        });
+        tracked("A LITTLE HELP FOR EVERYTHING AHEAD", 640, 222, C.sage, {
+          size: 11,
+          spacing: 2.2,
+          alpha: ease((t - 0.14) / 0.5),
+        });
+        text("The experience is", 640, 316 + slide((t - 0.08) / 0.45), 46, C.cream, {
+          family: "Fraunces",
+          weight: 400,
+          align: "center",
+        });
+        text("taking shape.", 640, 372 + slide((t - 0.19) / 0.45), 46, C.peach, {
+          family: "Fraunces",
+          weight: 400,
+          italic: true,
+          align: "center",
+        });
+        pill("In development · Private prototype", 435, 414, 410, "rgba(255,255,255,.08)", C.cream, {
+          height: 40,
+          size: 13,
+          stroke: "rgba(255,255,255,.16)",
+        });
+        text("Fictional examples only · no live recommendations · no calendar connection", 640, 505, 13, C.cream, {
+          align: "center",
+          alpha: ease((t - 0.37) / 0.45) * 0.82,
+        });
+        text("The full app is not available here · no public signup · release date to be announced", 640, 538, 12, C.cream, {
+          align: "center",
+          alpha: ease((t - 0.5) / 0.45) * 0.66,
+        });
+        line(540, 588, 740, 588, "rgba(255,255,255,.16)");
+        text("A Gosie concept showcase", 640, 616, 11, C.cream, { align: "center", alpha: 0.55 });
+      }
+      function renderScene(scene, time, alpha = 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        scene.draw(time);
+        ctx.restore();
+      }
+      window.renderAt = function renderAt(time) {
+        ctx.clearRect(0, 0, W, H);
+        let current = SCENES.findIndex((scene) => time >= scene.start && time < scene.end);
+        if (current < 0) current = time < 0 ? 0 : SCENES.length - 1;
+        const scene = SCENES[current];
+        const localTime = Math.max(0, time - scene.start);
+        const remaining = scene.end - time;
+        if (current > 0 && localTime < TRANSITION) {
+          const previous = SCENES[current - 1];
+          renderScene(previous, previous.end - previous.start, 1 - ease(localTime / TRANSITION));
+          renderScene(scene, localTime, ease(localTime / TRANSITION));
+        } else if (current < SCENES.length - 1 && remaining < TRANSITION) {
+          const next = SCENES[current + 1];
+          renderScene(scene, localTime, 1 - ease(1 - remaining / TRANSITION));
+          renderScene(next, 0, ease(1 - remaining / TRANSITION));
+        } else {
+          renderScene(scene, localTime);
+        }
+      };
+      window.renderAt(0);
+    </script>
+  </body>
+</html>
