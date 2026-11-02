@@ -18,11 +18,11 @@ No Replit Agent call or Replit deployment is part of this repair.
 ## Evidence and authority
 
 - Current source: `replit.md`, web routes, `WeekMock`, `WeekendMock`, web tests, workspace manifests, and both mobile tab screens.
-- [Phase 2 closeout handoff](https://chatgpt.com/library?file_id=libfile_76c97b01e8908191980eebb47b2d9ce4&account_id=personal): functional reference for the private Muse template, including its unresolved feedback-evidence caveat.
+- [Phase 2 closeout handoff](https://chatgpt.com/library?file_id=libfile_76c97b01e8908191980eebb47b2d9ce4&account_id=personal): functional reference for the private Muse template, including its feedback-evidence caveat.
 - [Gate 1G portable architecture plan](https://chatgpt.com/library?file_id=libfile_1e8e09889b148191a3e5c4af6ca09d5f&account_id=personal): standalone web/API/database with session identity and server-enforced ownership; B1-B4 migration sequence.
 - [Earlier Calendar pilot plan](https://chatgpt.com/library?file_id=libfile_f43419fb5e6c8191bc312c6bf7632643&account_id=personal): read-only, on-demand retrieval and privacy constraints. Gate 1G supersedes its Muse-first architectural option.
 
-The handoff describes Phase 2 as functionally accepted/frozen, with feedback persistence/isolation initially not exercised by nonempty rows. Later evidence in the handoff must be considered when recreating acceptance; do not infer that this GitHub repository contains those features.
+The handoff describes Phase 2 as functionally accepted/frozen, with feedback persistence/isolation not exercised by nonempty rows in its captured state. The handoff explicitly requires nonempty-row follow-up before trusting those Pass labels. The later portable plan also calls for feedback-effect reproduction; neither document proves this GitHub repository contains those features.
 The portable plan is a historical design reference, not proof of deployed code or current gate approval. This work authorizes the build repair and assessment only; it does not sign a migration or Calendar gate.
 
 ## Capability comparison
@@ -46,17 +46,34 @@ Status is relative to the operational consumer product, not the completeness of 
 | Calendar and other live connectors | Missing / later scope | No account connection exists here. Calendar remains gated after core-product acceptance. |
 | Mobile companion | Illustrative only | Static events and ideas with local component state. Its weekend copy still contains fictional saved/rated-history explanations; recorded as a follow-up, unchanged by this repair. |
 
-The two actual web Week Ahead previews and compact/normal variants have regression coverage for all five weekdays and seven events. This repair preserves those source files and tests; fresh results must come from CI.
+The two actual web Week Ahead previews and compact/normal variants have regression coverage for all five weekdays and seven events. This repair preserves those source files and tests. Fresh CI results are recorded below.
 No source evidence supports calling this repository a completed consumer MVP.
 
 ## Smallest ordered route to a consumer MVP
 
-1. **Reconcile the original implementation first.** Locate the independently developed standalone B1/B2 source, if it exists. Compare its revision and acceptance evidence with Gate 1G; selectively reuse verified work instead of rebuilding it. It is absent from this inspected repository. Do not merge an unrelated prototype wholesale.
+1. **Reconcile the original implementation first.** Locate the independently developed standalone B1/B2 source, if it exists. Repository-name searches for personal-intelligence, Goose, and Muse under the connected GitHub owner returned no matches; that does not rule out source under another name or outside GitHub. Compare its revision and acceptance evidence with Gate 1G; selectively reuse verified work instead of rebuilding it. It is absent from this inspected repository. Do not merge an unrelated prototype wholesale.
 2. **Agree on the first operational release.** Recommended first milestone: a private multi-account web pilot with manual entry and explicitly fictional discovery records. This is a proposed consumer-friendly milestone, not a live-discovery release. Keep the promotional homepage intact and introduce the operational experience through explicit application routes.
 3. **Foundation (B1 equivalent).** One web/API/database application, secure sessions, server-side ownership on every operation, persistent profiles, schema validation, and import-as-new-profile. Select the database/auth approach before implementation; do not provision paid services as part of this repair.
 4. **Consumer journeys (B2 equivalent).** Short onboarding, editable structured/custom interests, Week/Weekend dashboards, category-first default and other documented groupings, deterministic hard constraints before ranking, view-scoped social lens, provenance/Why panels, and durable feedback with observable per-profile effects. Keep calculation, data adapters, and presentation separate within one application; independent agents/workers are not required.
 5. **Evidence (B3 equivalent).** Nonempty feedback survives restart; two users cannot access each other's profiles; two profiles can rate the same item differently; import/export round-trips and rejects wrong versions; legacy customInterests defaults correctly; hard limits survive social-context changes; no-match is honest. Reproduce E1-E8, review responsive/keyboard/reduced-motion behavior, and compare exact scoring only where fixtures and rules are available. Counts and sample scores alone are not acceptance.
 6. **Real-data connector (B4, later).** Only after core acceptance and explicit connector authorization: on-demand, read-only Calendar with per-profile ownership, Excluded/Detailed/Availability-only selections, server-side token custody, minimal retention, distinguishable failure states, and disconnect/deletion. Live discovery and real travel routing are separate decisions.
+
+## Verification evidence
+
+[GitHub Actions run](https://github.com/timrking11-blip/Gosie/actions/runs/41448467236), tested branch revision `51e5faae29024b62ec18fced9d79a627e95e126e`, PR merge revision `3dbb1ce2d63bff86224c0f2d6134d9fa9279125b`.
+Node 24, PNPM 10.26.1, frozen lockfile, artifact-configured PORT=23967 and BASE_PATH=/.
+
+| Check | Fresh outcome |
+| --- | --- |
+| Locked web dependency installation | Pass |
+| `pnpm --filter @workspace/gosie typecheck` | Pass, no suppression or config exclusions added |
+| `pnpm --filter @workspace/gosie test` | Pass: 13 tests across 3 files (10 preview interactions, 1 routing, 2 new resizable compatibility cases) |
+| `pnpm --filter @workspace/gosie build` | Pass |
+| Live browser / real resize interaction | Not performed |
+
+The first successful run exposed a React test focus-update warning; the test now flushes that update with `act`, and the subsequent run passes. An upstream pnpm setup-action Node 20 deprecation notice remains; GitHub ran that action on Node 24 successfully. No Replit Agent calls, billing changes, account connections, infrastructure provisioning, or deployment were used.
+The baseline errors were confirmed in source; a fresh pre-repair baseline typecheck was not run locally because the local host could not resolve GitHub. Final checks ran on GitHub's runner instead.
+Documentation-only evidence updates do not alter the tested product code.
 
 ## Current release limitations
 
