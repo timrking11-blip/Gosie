@@ -240,7 +240,7 @@ function How() {
   const steps = [
     { n: "01", t: "Choose a demo view", d: "Use the hero preview selector on smaller screens, or explore both demos side by side on desktop. All content is illustrative." },
     { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores." },
-    { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. There are no save, dismiss or rate actions, editable preferences, or learned personalisation in this demo." },
+    { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. The Gosie Mobile preview also includes save, dismiss and rating controls that change only local demo state for the current session." },
   ];
   return (
     <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-24 sm:py-32">
@@ -257,7 +257,8 @@ function How() {
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <div className="rounded-2xl bg-forest p-7 text-cream">
           <p className="eyebrow text-sage">Try on this website</p>
-          <p className="mt-3 text-sm text-cream/80">Hero preview selection, sample week grouping, social-context ranking of fictional weekend ideas, and example explanation toggles. No data is saved and no preferences are learned.</p>
+          <p className="mt-3 text-sm text-cream/80">Hero preview selection, sample week grouping, social-context ranking of fictional weekend ideas, and example explanation toggles. This website does not save data or learn preferences.</p>
+          <p className="mt-3 text-sm text-cream/80">The Gosie Mobile preview also has save, dismiss and rating controls. They affect only temporary local demo state; nothing is stored or synced.</p>
         </div>
         <div className="rounded-2xl border border-dashed border-forest/30 p-7">
           <p className="eyebrow text-forest/70">Planned · future</p>
@@ -302,7 +303,7 @@ function Faq() {
     ["What is Gosie?", "A personal-intelligence concept for the week and weekend ahead. This promotional website contains fictional demos: select a hero preview, group sample events, change the social context of sample ideas, and open example explanations."],
     ["Is Gosie available now?", "The website demos are available to explore. The full product is in development, with release date to be announced. This website has no product sign-up."],
     ["Does Gosie connect to my calendar?", "No. All displayed events are fictional and there is no live calendar integration. Calendar connections are planned for the future, not implemented here."],
-    ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples; you cannot edit preferences, save, dismiss or rate ideas, or train a learning system here."],
+      ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples, and you cannot edit preferences or train a learning system here. The website has no save, dismiss or rate actions; those controls in the Gosie Mobile preview change only temporary local demo state and do not persist or sync."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-5 py-24 sm:py-32">

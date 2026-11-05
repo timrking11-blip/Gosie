@@ -18,10 +18,10 @@ type Idea = {
   why: string;
 };
 const ideas: Idea[] = [
-  { title: 'Late set at a small jazz room', kind: 'Music', when: 'Sat · evening', budget: '$$', travel: '20 min', fit: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, why: 'You saved two live-music ideas last month and kept Saturday evening open.' },
-  { title: 'Restored-print film night', kind: 'Film', when: 'Fri · 8 pm', budget: '$', travel: '12 min', fit: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, why: "You rated a classic-cinema idea highly, and it's within your travel bound." },
-  { title: 'Long lunch, shared plates', kind: 'Food', when: 'Sun · midday', budget: '$$', travel: '15 min', fit: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, why: "Matches your 'unhurried weekends' preference and moderate budget." },
-  { title: 'Riverside walk & market', kind: 'Outdoors', when: 'Sun · morning', budget: 'Free', travel: '8 min', fit: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, why: 'A low-key counterweight to a busy week ahead.' },
+  { title: 'Late set at a small jazz room', kind: 'Music', when: 'Sat · evening', budget: '$$', travel: '20 min', fit: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, why: 'Sample interest: live music. The Saturday timing is fictional.' },
+  { title: 'Restored-print film night', kind: 'Film', when: 'Fri · 8 pm', budget: '$', travel: '12 min', fit: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, why: 'Sample interest: classic cinema. The travel estimate is illustrative.' },
+  { title: 'Long lunch, shared plates', kind: 'Food', when: 'Sun · midday', budget: '$$', travel: '15 min', fit: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, why: 'Example preference: unhurried weekends and a moderate budget.' },
+  { title: 'Riverside walk & market', kind: 'Outdoors', when: 'Sun · morning', budget: 'Free', travel: '8 min', fit: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, why: 'Example reason: a low-key alternative to a busy week.' },
 ];
 
 function Header() {
@@ -41,7 +41,29 @@ function Header() {
   );
 }
 
-function IdeaCard({ idea, index, context, expanded, onToggle }: { idea: Idea; index: number; context: Context; expanded: boolean; onToggle: () => void }) {
+function IdeaCard({
+  idea,
+  index,
+  context,
+  expanded,
+  saved,
+  rating,
+  onToggle,
+  onSave,
+  onDismiss,
+  onRate,
+}: {
+  idea: Idea;
+  index: number;
+  context: Context;
+  expanded: boolean;
+  saved: boolean;
+  rating: number | null;
+  onToggle: () => void;
+  onSave: () => void;
+  onDismiss: () => void;
+  onRate: (rating: number) => void;
+}) {
   const fit = idea.fit[context];
   return (
     <View style={styles.ideaCard}>
@@ -57,6 +79,47 @@ function IdeaCard({ idea, index, context, expanded, onToggle }: { idea: Idea; in
       <View style={styles.cardFooter}>
         <View style={styles.metaItem}><Feather name="tag" size={12} color={C.gold} /><Text style={styles.detailText}>{idea.budget}</Text></View>
         <View style={styles.metaItem}><Feather name="map-pin" size={12} color={C.gold} /><Text style={styles.detailText}>{idea.travel} away</Text></View>
+      </View>
+      <View style={styles.feedbackActions}>
+        <TouchableOpacity
+          onPress={onSave}
+          accessibilityRole="button"
+          accessibilityLabel={`${saved ? 'Unsave' : 'Save'} ${idea.title} for this demo session`}
+          accessibilityState={{ selected: saved }}
+          style={[styles.feedbackButton, saved && styles.feedbackButtonSelected]}
+        >
+          <Feather name="bookmark" size={14} color={saved ? C.cream : C.peach} />
+          <Text style={[styles.feedbackButtonText, saved && styles.feedbackButtonTextSelected]}>{saved ? 'Saved' : 'Save'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel={`Dismiss ${idea.title} for this demo session`}
+          style={styles.feedbackButton}
+        >
+          <Feather name="x-circle" size={14} color={C.peach} />
+          <Text style={styles.feedbackButtonText}>Dismiss</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.ratingRow}>
+        <Text style={styles.ratingLabel}>Rate this</Text>
+        <View style={styles.ratingControls}>
+          {[1, 2, 3, 4, 5].map((score) => (
+            <TouchableOpacity
+              key={score}
+              onPress={() => onRate(score)}
+              accessibilityRole="button"
+              accessibilityLabel={`Rate ${idea.title} ${score} out of 5 stars`}
+              accessibilityState={{ selected: rating === score }}
+              style={styles.ratingButton}
+            >
+              <Feather name="star" size={15} color={rating !== null && score <= rating ? C.gold : '#f5f0e580'} fill={rating !== null && score <= rating ? C.gold : 'transparent'} />
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.ratingValue} accessibilityLabel={rating === null ? 'Not rated' : `Rated ${rating} out of 5`}>
+          {rating === null ? '—' : `${rating}/5`}
+        </Text>
       </View>
       <TouchableOpacity onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} style={styles.whyButton}>
         <Text style={styles.whyLabel}>Why this idea?</Text>
@@ -75,7 +138,13 @@ function IdeaCard({ idea, index, context, expanded, onToggle }: { idea: Idea; in
 export default function WeekendScreen() {
   const [context, setContext] = useState<Context>('All');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [savedIdeas, setSavedIdeas] = useState<string[]>([]);
+  const [dismissedIdeas, setDismissedIdeas] = useState<string[]>([]);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
   const ranked = [...ideas].sort((a, b) => b.fit[context] - a.fit[context]);
+  const visibleIdeas = ranked.filter((idea) => !dismissedIdeas.includes(idea.title));
+  const dismissedList = ideas.filter((idea) => dismissedIdeas.includes(idea.title));
+  const ratedCount = Object.keys(ratings).length;
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" />
@@ -85,7 +154,7 @@ export default function WeekendScreen() {
           <View style={styles.heroHalo} />
           <Text style={styles.eyebrow}>Weekend Ahead · life in motion</Text>
           <Text style={styles.heroTitle}>Leave a little room for <Text style={styles.heroItalic}>something good.</Text></Text>
-          <Text style={styles.heroBody}>A late jazz set, a restored film, a long lunch with friends. Tell Gosie who's coming—solo, friends, a date, a group—and watch the ideas re-rank. Budget, travel and pace stay in your hands.</Text>
+          <Text style={styles.heroBody}>A late jazz set, a restored film, a long lunch with friends. Choose who's coming—solo, friends, a date or a group—to reorder fictional ideas using preset scores. Budget, travel and pace labels are fixed examples.</Text>
           <View style={styles.exampleTag}><View style={styles.exampleDot} /><Text style={styles.exampleText}>Example demo</Text></View>
         </View>
 
@@ -110,21 +179,61 @@ export default function WeekendScreen() {
             <View style={styles.preference}><Feather name="map" size={13} color={C.forest} /><Text style={styles.preferenceText}>Travel · under 25 min</Text></View>
             <View style={styles.preference}><Feather name="coffee" size={13} color={C.forest} /><Text style={styles.preferenceText}>Pace · unhurried</Text></View>
           </View>
+          <View style={styles.demoNotice} accessibilityLiveRegion="polite">
+            <Text style={styles.demoNoticeTitle}>Demo feedback · current session only</Text>
+            <Text style={styles.demoNoticeSummary}>{savedIdeas.length} saved · {dismissedIdeas.length} dismissed · {ratedCount} rated</Text>
+            <Text style={styles.demoNoticeBody}>These actions are temporary and local to this screen. Nothing is stored or synced; state can reset when you reload or close the app.</Text>
+          </View>
 
           <View style={styles.rankedHeader}>
             <Text style={styles.rankedLabel}>Re-ranked for <Text style={styles.rankedActive}>{context}</Text></Text>
-            <Text style={styles.rankedCount}>04 IDEAS</Text>
+            <Text style={styles.rankedCount}>{visibleIdeas.length.toString().padStart(2, '0')} IDEAS</Text>
           </View>
           <View style={styles.ideaList}>
-            {ranked.map((idea, index) => (
-              <IdeaCard key={idea.title} idea={idea} index={index} context={context} expanded={expanded === idea.title} onToggle={() => setExpanded(expanded === idea.title ? null : idea.title)} />
+            {visibleIdeas.map((idea, index) => (
+              <IdeaCard
+                key={idea.title}
+                idea={idea}
+                index={index}
+                context={context}
+                expanded={expanded === idea.title}
+                saved={savedIdeas.includes(idea.title)}
+                rating={ratings[idea.title] ?? null}
+                onToggle={() => setExpanded(expanded === idea.title ? null : idea.title)}
+                onSave={() => setSavedIdeas((current) => current.includes(idea.title)
+                  ? current.filter((title) => title !== idea.title)
+                  : [...current, idea.title])}
+                onDismiss={() => setDismissedIdeas((current) => current.includes(idea.title) ? current : [...current, idea.title])}
+                onRate={(rating) => setRatings((current) => ({ ...current, [idea.title]: rating }))}
+              />
             ))}
           </View>
+          {visibleIdeas.length === 0 && (
+            <Text style={styles.emptyIdeas}>All sample ideas are dismissed. Restore one below to bring it back.</Text>
+          )}
+          {dismissedList.length > 0 && (
+            <View style={styles.dismissedPanel}>
+              <Text style={styles.dismissedHeading}>Dismissed this session</Text>
+              {dismissedList.map((idea) => (
+                <View key={idea.title} style={styles.dismissedRow}>
+                  <Text style={styles.dismissedTitle}>{idea.title}</Text>
+                  <TouchableOpacity
+                    onPress={() => setDismissedIdeas((current) => current.filter((title) => title !== idea.title))}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Restore ${idea.title}`}
+                    style={styles.restoreButton}
+                  >
+                    <Text style={styles.restoreText}>Restore</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
           <View style={styles.note}>
             <Feather name="info" size={15} color={C.bronze} />
-          <Text style={styles.noteText}>Try the pills on the card. Each idea can tell you why it's there.</Text>
+          <Text style={styles.noteText}>Try the context pills, feedback buttons and explanation controls. Feedback does not change the preset ranking.</Text>
           </View>
-          <Text style={styles.disclaimer}>Illustrative preview · fictional data · not real listings, prices or availability.</Text>
+          <Text style={styles.disclaimer}>Illustrative preview · fictional data · not real listings, prices or availability. Feedback is not saved or synced.</Text>
           <View style={styles.footer}>
             <Text style={styles.footerText}>A little help for everything ahead.</Text>
             <Text style={styles.footerBrand}>gosie.</Text>
@@ -186,6 +295,27 @@ const styles = StyleSheet.create({
   cardFooter: { flexDirection: 'row', gap: 15, marginTop: 10 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   detailText: { color: '#f5f0e58b', fontFamily: 'Manrope_400Regular', fontSize: 10 },
+  feedbackActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  feedbackButton: { flex: 1, minHeight: 40, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, borderRadius: 10, borderWidth: 1, borderColor: '#f5f0e533', backgroundColor: '#f5f0e50a' },
+  feedbackButtonSelected: { backgroundColor: C.forest, borderColor: C.forest },
+  feedbackButtonText: { color: C.cream, fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  feedbackButtonTextSelected: { color: C.cream },
+  ratingRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 3, marginTop: 6 },
+  ratingLabel: { color: '#f5f0e5bd', fontFamily: 'Manrope_600SemiBold', fontSize: 9 },
+  ratingControls: { flexDirection: 'row', alignItems: 'center' },
+  ratingButton: { width: 38, height: 40, justifyContent: 'center', alignItems: 'center' },
+  ratingValue: { minWidth: 25, color: C.gold, textAlign: 'right', fontFamily: 'Manrope_700Bold', fontSize: 9 },
+  demoNotice: { marginTop: 13, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#94664055', backgroundColor: C.secondary },
+  demoNoticeTitle: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  demoNoticeSummary: { color: C.forest, fontFamily: 'Manrope_600SemiBold', fontSize: 10, marginTop: 4 },
+  demoNoticeBody: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, lineHeight: 14, marginTop: 4 },
+  emptyIdeas: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 11, lineHeight: 17, textAlign: 'center', padding: 18 },
+  dismissedPanel: { marginTop: 11, padding: 12, borderRadius: 12, backgroundColor: C.secondary },
+  dismissedHeading: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 10, marginBottom: 5 },
+  dismissedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  dismissedTitle: { flex: 1, color: C.ink, fontFamily: 'Manrope_400Regular', fontSize: 10 },
+  restoreButton: { minHeight: 34, justifyContent: 'center', paddingHorizontal: 9 },
+  restoreText: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 10 },
   whyButton: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#f5f0e520', marginTop: 12, paddingTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   whyLabel: { color: C.peach, fontFamily: 'Manrope_700Bold', fontSize: 10 },
   explanation: { flexDirection: 'row', gap: 9, marginTop: 10, paddingBottom: 2 },
