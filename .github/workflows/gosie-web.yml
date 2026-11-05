@@ -65,3 +65,6 @@ jobs:
           sleep 2
           node test-b1.js | tee test.log
           ! grep -q '^FAIL' test.log
+      - name: Hardening tests (API and mobile static server)
+        if: ${{ !cancelled() }}
+        run: node --test artifacts/api-server/hardening.test.js artifacts/gosie-mobile/server/serve.test.js
