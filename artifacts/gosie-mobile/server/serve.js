@@ -126,11 +126,33 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
 const appName = getAppName();
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host}`);
-  let pathname = url.pathname;
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'SAMEORIGIN',
+};
 
-  if (basePath && pathname.startsWith(basePath)) {
+function handleRequest(req, res) {
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { allow: 'GET, HEAD' });
+    return res.end();
+  }
+
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url || '/', 'http://localhost').pathname);
+  } catch {
+    res.writeHead(400);
+    return res.end('Bad Request');
+  }
+  if (pathname.includes('\0')) {
+    res.writeHead(400);
+    return res.end('Bad Request');
+  }
+
+  if (basePath && (pathname === basePath || pathname.startsWith(basePath + '/'))) {
     pathname = pathname.slice(basePath.length) || '/';
   }
 
@@ -146,9 +168,31 @@ const server = http.createServer((req, res) => {
   }
 
   serveStaticFile(pathname, res);
+}
+
+const server = http.createServer((req, res) => {
+  try {
+    handleRequest(req, res);
+  } catch (err) {
+    console.error('Unhandled request error:', err);
+    if (!res.headersSent) res.writeHead(500);
+    res.end('Internal Server Error');
+  }
 });
 
 const port = parseInt(process.env.PORT || '3000', 10);
+if (!Number.isInteger(port) || port < 0 || port > 65535) {
+  console.error(`Invalid PORT value: "${process.env.PORT}"`);
+  process.exit(1);
+}
 server.listen(port, '0.0.0.0', () => {
   console.log(`Serving static Expo build on port ${port}`);
 });
+
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    setTimeout(() => process.exit(1), 5000).unref();
+    server.close(() => process.exit(0));
+    server.closeIdleConnections?.();
+  });
+}

@@ -7,18 +7,45 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
-const PORT = process.env.PORT || 8791;
+const PORT = Number(process.env.PORT || 8791);
+if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) { console.error(JSON.stringify({fatal:'invalid PORT', value:process.env.PORT})); process.exit(1); }
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'b1.db');
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const AUTH_RATE_LIMIT = Number(process.env.AUTH_RATE_LIMIT) || 20;
 const MAX_BODY = 65536;
+const MAX_PROFILES_PER_USER = 50;
 const authHits = new Map();
+function clientIp(req){
+  if (TRUST_PROXY) { const f = String(req.headers['x-forwarded-for']||'').split(',')[0].trim(); if (f) return f; }
+  return req.socket.remoteAddress || 'unknown';
+}
 function rateLimited(req){
-  const ip = req.socket.remoteAddress || 'unknown'; const now = Date.now();
+  const ip = clientIp(req); const now = Date.now();
   const hits = (authHits.get(ip) || []).filter(t => now - t < 60000); hits.push(now); authHits.set(ip, hits);
   return hits.length > AUTH_RATE_LIMIT;
 }
-setInterval(()=>{ const now=Date.now(); for(const [ip,h] of authHits) if(!h.some(t=>now-t<60000)) authHits.delete(ip); }, 60000).unref();
+function log(obj){ console.log(JSON.stringify(Object.assign({t:new Date().toISOString()}, obj))); }
+const isStr = (v,max)=> typeof v==='string' && v.length<=max;
+const isNum = v => typeof v==='number' && Number.isFinite(v) && v>=0 && v<=100000;
+const strArr = (v,n,max)=> Array.isArray(v) && v.length<=n && v.every(x=>isStr(x,max));
+// Returns an error string or null. Fields are checked only when present so legacy exports still import.
+function configError(c){
+  if (c===null || typeof c!=='object' || Array.isArray(c)) return 'config_must_be_object';
+  for (const k of ['budgetPerActivity','maxTravelMinutes','exceptionTravelMinutes']) if (k in c && !isNum(c[k])) return k+'_invalid';
+  for (const k of ['budgetHard','allowExceptions','surpriseMe']) if (k in c && typeof c[k]!=='boolean') return k+'_invalid';
+  for (const k of ['balance','weekGrouping','homeBase']) if (k in c && c[k]!==null && !isStr(c[k],200)) return k+'_invalid';
+  for (const k of ['transportModes','weekendInterests','socialContexts','balancedPriorities']) if (k in c && !strArr(c[k],50,200)) return k+'_invalid';
+  if ('customInterests' in c){
+    if (!Array.isArray(c.customInterests) || c.customInterests.length>50 || !c.customInterests.every(x=>x && typeof x==='object' && !Array.isArray(x) && Object.values(x).every(v=>typeof v==='number' || isStr(v,500)))) return 'customInterests_invalid';
+  }
+  if ('customSections' in c && (!Array.isArray(c.customSections) || c.customSections.length>50)) return 'customSections_invalid';
+  return null;
+}
+setInterval(()=>{
+  const now=Date.now(); for(const [ip,h] of authHits) if(!h.some(t=>now-t<60000)) authHits.delete(ip);
+  try{ db.prepare('DELETE FROM sessions WHERE expires_at<?').run(now); }catch(e){ log({level:'error',msg:'session_cleanup_failed',err:String(e)}); }
+}, 60000).unref();
 const FEEDBACK_ACTIONS = new Set(['saved','dismissed','rating']);
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new DatabaseSync(DB_PATH);
@@ -28,7 +55,11 @@ CREATE TABLE IF NOT EXISTS profiles(id TEXT PRIMARY KEY, user_id TEXT NOT NULL, 
 CREATE TABLE IF NOT EXISTS feedback(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, profile_id TEXT NOT NULL, item_id TEXT NOT NULL, action TEXT NOT NULL, rating INTEGER, created_at TEXT NOT NULL);`);
 function sha(s){ return crypto.createHash('sha256').update(s).digest('hex'); }
 function hashPw(pw, salt){ return crypto.scryptSync(pw, salt, 64).toString('hex'); }
-function send(res, code, obj){ res.writeHead(code, {'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); }
+const DUMMY_SALT = crypto.randomBytes(16).toString('hex');
+function send(res, code, obj){
+  res.writeHead(code, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'"});
+  res.end(JSON.stringify(obj));
+}
 function parseCookies(req){ const out={}; (req.headers.cookie||'').split(';').forEach(p=>{ const [k,...v]=p.trim().split('='); if(k) out[k]=v.join('='); }); return out; }
 function sessionOf(req){
   const sid = parseCookies(req).session_id; if(!sid) return null;
@@ -57,10 +88,16 @@ function seedDemos(){
 seedDemos();
 function ownProfile(userId, pid){ return db.prepare('SELECT * FROM profiles WHERE id=? AND user_id=?').get(pid, userId); }
 const server = http.createServer((req,res)=>{
-  const url = new URL(req.url,'http://localhost');
+  let url; try{ url = new URL(req.url,'http://localhost'); }catch{ return send(res,400,{error:'bad_request'}); }
+  const started = Date.now();
+  res.on('finish', ()=> log({method:req.method, path:url.pathname, status:res.statusCode, ms:Date.now()-started}));
   let body=''; let tooLarge=false;
   req.on('data',c=>{ if(tooLarge) return; body+=c; if(body.length>MAX_BODY){ tooLarge=true; body=''; } });
-  req.on('end',()=>{
+  req.on('error',()=>{});
+  req.on('end',()=>{ try{ handle(req,res,url,body,tooLarge); }catch(e){ log({level:'error',msg:'unhandled',path:url.pathname,err:String(e&&e.stack||e)}); if(!res.headersSent) send(res,500,{error:'internal_error'}); else res.end(); } });
+});
+function handle(req,res,url,body,tooLarge){
+  {
     if(tooLarge) return send(res,413,{error:'payload_too_large'});
     let j={}; if(body){ try{ j=JSON.parse(body); }catch{ return send(res,400,{error:'invalid_json'}); } }
     if(j===null || typeof j!=='object' || Array.isArray(j)) return send(res,400,{error:'invalid_json'});
@@ -70,15 +107,20 @@ const server = http.createServer((req,res)=>{
     if(req.method==='GET' && url.pathname==='/health') return send(res,200,{ok:true,pilot:'b1-local'});
     if(req.method==='POST' && url.pathname==='/auth/register'){
       if(typeof j.email!=='string' || typeof j.password!=='string' || !j.email || !j.password) return send(res,400,{error:'email_and_password_required'});
+      const email=j.email.trim().toLowerCase();
+      if(email.length>254 || !/^[^\s@]+@[^\s@]+$/.test(email)) return send(res,400,{error:'invalid_email'});
       if(j.password.length<8) return send(res,400,{error:'password_too_short'});
+      if(j.password.length>200) return send(res,400,{error:'password_too_long'});
       const salt=crypto.randomBytes(16).toString('hex'); const id='user-'+crypto.randomBytes(8).toString('hex');
-      try{ db.prepare('INSERT INTO users(id,email,pass_hash,pass_salt,created_at) VALUES (?,?,?,?,?)').run(id,j.email,hashPw(j.password,salt),salt,new Date().toISOString()); }catch{ return send(res,409,{error:'email_exists'}); }
-      return send(res,201,{id,email:j.email});
+      try{ db.prepare('INSERT INTO users(id,email,pass_hash,pass_salt,created_at) VALUES (?,?,?,?,?)').run(id,email,hashPw(j.password,salt),salt,new Date().toISOString()); }catch{ return send(res,409,{error:'email_exists'}); }
+      return send(res,201,{id,email});
     }
     if(req.method==='POST' && url.pathname==='/auth/login'){
-      if(typeof j.email!=='string' || typeof j.password!=='string') return send(res,401,{error:'unauthorized'});
-      const u=db.prepare('SELECT * FROM users WHERE email=?').get(j.email);
-      if(!u || !crypto.timingSafeEqual(Buffer.from(hashPw(j.password,u.pass_salt)), Buffer.from(u.pass_hash))) return send(res,401,{error:'unauthorized'});
+      if(typeof j.email!=='string' || typeof j.password!=='string' || j.password.length>200) return send(res,401,{error:'unauthorized'});
+      const u=db.prepare('SELECT * FROM users WHERE email=?').get(j.email.trim().toLowerCase());
+      // Hash even for unknown users so response time does not reveal which emails exist.
+      const hashed=hashPw(j.password,u?u.pass_salt:DUMMY_SALT);
+      if(!u || !crypto.timingSafeEqual(Buffer.from(hashed), Buffer.from(u.pass_hash))) return send(res,401,{error:'unauthorized'});
       const sid=crypto.randomBytes(24).toString('hex'); const csrf=crypto.randomBytes(24).toString('hex');
       const exp=Date.now()+24*3600*1000;
       db.prepare('INSERT INTO sessions(id,user_id,csrf,expires_at,created_at) VALUES (?,?,?,?,?)').run(sid,u.id,csrf,exp,new Date().toISOString());
@@ -98,14 +140,16 @@ const server = http.createServer((req,res)=>{
     }
     if(req.method==='POST' && url.pathname==='/profiles'){
       if(!csrfOk()) return send(res,403,{error:'csrf_required'});
-      if(!j.title || !j.config || j.config.schemaVersion!=='1.0.0-draft') return send(res,400,{error:'invalid_config'});
+      if(!isStr(j.title,200) || !j.title.trim() || !j.config || j.config.schemaVersion!=='1.0.0-draft') return send(res,400,{error:'invalid_config'});
+      { const ce=configError(j.config); if(ce) return send(res,400,{error:'invalid_config',detail:ce}); }
+      if(db.prepare('SELECT COUNT(*) c FROM profiles WHERE user_id=?').get(sess.user.id).c>=MAX_PROFILES_PER_USER) return send(res,409,{error:'profile_limit_reached'});
       const id='profile-'+crypto.randomBytes(8).toString('hex');
       db.prepare('INSERT INTO profiles(id,user_id,is_demo,title,config,created_at) VALUES (?,?,?,?,?,?)').run(id,sess.user.id,0,j.title,JSON.stringify(j.config),new Date().toISOString());
       return send(res,201,{id,title:j.title});
     }
     const mProfile = url.pathname.match(/^\/profiles\/([^\/]+)(\/export)?$/);
     if(mProfile){
-      const pid=decodeURIComponent(mProfile[1]);
+      let pid; try{ pid=decodeURIComponent(mProfile[1]); }catch{ return send(res,400,{error:'bad_request'}); }
       if(req.method==='GET' && mProfile[2]==='/export'){
         const p=ownProfile(sess.user.id,pid); if(!p) return send(res,404,{error:'not_found'});
         return send(res,200,{id:p.id,title:p.title,config:JSON.parse(p.config)});
@@ -118,6 +162,8 @@ const server = http.createServer((req,res)=>{
         if(!csrfOk()) return send(res,403,{error:'csrf_required'});
         const p=ownProfile(sess.user.id,pid); if(!p) return send(res,404,{error:'not_found'});
         if(!j.config || j.config.schemaVersion!=='1.0.0-draft') return send(res,400,{error:'invalid_config'});
+        { const ce=configError(j.config); if(ce) return send(res,400,{error:'invalid_config',detail:ce}); }
+        if(j.title!==undefined && (!isStr(j.title,200) || !j.title.trim())) return send(res,400,{error:'invalid_title'});
         db.prepare('UPDATE profiles SET config=?, title=? WHERE id=?').run(JSON.stringify(j.config), j.title||p.title, pid);
         return send(res,200,{id:pid});
       }
@@ -130,10 +176,13 @@ const server = http.createServer((req,res)=>{
     }
     if(req.method==='POST' && url.pathname==='/profiles/import'){
       if(!csrfOk()) return send(res,403,{error:'csrf_required'});
-      const cfg=j.config; if(!cfg) return send(res,400,{error:'config_required'});
+      const cfg=j.config; if(!cfg || typeof cfg!=='object' || Array.isArray(cfg)) return send(res,400,{error:'config_required'});
       // Legacy: profiles without schemaVersion are upgraded to 1.0.0-draft (Phase 2 legacy rule)
       if(!cfg.schemaVersion){ cfg.schemaVersion='1.0.0-draft'; }
       if(cfg.schemaVersion!=='1.0.0-draft') return send(res,400,{error:'version_mismatch'});
+      { const ce=configError(cfg); if(ce) return send(res,400,{error:'invalid_config',detail:ce}); }
+      if(j.title!==undefined && (!isStr(j.title,200) || !j.title.trim())) return send(res,400,{error:'invalid_title'});
+      if(db.prepare('SELECT COUNT(*) c FROM profiles WHERE user_id=?').get(sess.user.id).c>=MAX_PROFILES_PER_USER) return send(res,409,{error:'profile_limit_reached'});
       const id='profile-'+crypto.randomBytes(8).toString('hex');
       db.prepare('INSERT INTO profiles(id,user_id,is_demo,title,config,created_at) VALUES (?,?,?,?,?,?)').run(id,sess.user.id,0,j.title||'Imported profile',JSON.stringify(cfg),new Date().toISOString());
       return send(res,201,{id,title:j.title||'Imported profile'});
@@ -144,8 +193,8 @@ const server = http.createServer((req,res)=>{
     }
     if(req.method==='POST' && url.pathname==='/feedback'){
       if(!csrfOk()) return send(res,403,{error:'csrf_required'});
-      const p=ownProfile(sess.user.id,j.profile_id); if(!p) return send(res,404,{error:'not_found'});
-      if(typeof j.item_id!=='string' || !FEEDBACK_ACTIONS.has(j.action) || (j.action==='rating' && !(Number.isInteger(j.rating) && j.rating>=1 && j.rating<=5))) return send(res,400,{error:'invalid_feedback'});
+      const p=ownProfile(sess.user.id,typeof j.profile_id==='string'?j.profile_id:''); if(!p) return send(res,404,{error:'not_found'});
+      if(!isStr(j.item_id,100) || !j.item_id || !FEEDBACK_ACTIONS.has(j.action) || (j.action==='rating' && !(Number.isInteger(j.rating) && j.rating>=1 && j.rating<=5))) return send(res,400,{error:'invalid_feedback'});
       const info=db.prepare('INSERT INTO feedback(user_id,profile_id,item_id,action,rating,created_at) VALUES (?,?,?,?,?,?)').run(sess.user.id,j.profile_id,j.item_id,j.action,j.rating??null,new Date().toISOString());
       return send(res,201,{id:info.lastInsertRowid});
     }
@@ -155,7 +204,7 @@ const server = http.createServer((req,res)=>{
     }
     // ---- B2: Week / Weekend dashboards (fictional demo data, deterministic) ----
     if(req.method==='GET' && url.pathname==='/week'){
-      const pid=url.searchParams.get('profile_id'); const p=ownProfile(sess.user.id,pid);
+      const pid=url.searchParams.get('profile_id')||''; const p=ownProfile(sess.user.id,pid);
       if(!p) return send(res,404,{error:'not_found'});
       const cfg=JSON.parse(p.config);
       // Fictional week records from the Phase 2 reference (Alex visible set, 7 of 12 total)
@@ -172,9 +221,9 @@ const server = http.createServer((req,res)=>{
       return send(res,200,{theme:'Modern Executive Productivity', grouping:cfg.weekGrouping, totalBeforeFilter:12, items:weekRecords, groups, why:['Demo data — fictional records, not a real calendar.']});
     }
     if(req.method==='GET' && url.pathname==='/weekend'){
-      const pid=url.searchParams.get('profile_id'); const p=ownProfile(sess.user.id,pid);
+      const pid=url.searchParams.get('profile_id')||''; const p=ownProfile(sess.user.id,pid);
       if(!p) return send(res,404,{error:'not_found'});
-      const cfg=JSON.parse(p.config);
+      const cfg=Object.assign({transportModes:[],maxTravelMinutes:30,exceptionTravelMinutes:60,budgetPerActivity:50,budgetHard:false,allowExceptions:false,weekendInterests:[],customInterests:[]}, JSON.parse(p.config));
       const social=url.searchParams.get('social')||'all';
       const socialToken = social==='friend'?'friends':social==='solo'?'solo':social==='date'?'date':social==='group'?'group':'flexible';
       // Fictional weekend records from the Phase 2 reference (16 records, e1–e16)
@@ -244,8 +293,15 @@ const server = http.createServer((req,res)=>{
       return send(res,200,{theme:'Life in Motion', social, included, exceptions, excluded, includedCount:included.length, exceptionCount:exceptions.length, excludedCount:excluded.length});
     }
     return send(res,404,{error:'not_found'});
-  });
-});
-server.timeout=10000;
+  }
+}
+server.timeout=10000; server.headersTimeout=10000; server.requestTimeout=10000; server.keepAliveTimeout=5000;
 server.listen(PORT, '0.0.0.0', ()=>console.log(JSON.stringify({listening:PORT, db:DB_PATH})));
-for(const sig of ['SIGINT','SIGTERM']) process.on(sig, ()=>server.close(()=>{ db.close(); process.exit(0); }));
+for(const sig of ['SIGINT','SIGTERM']) process.on(sig, ()=>{
+  log({msg:'shutting_down',sig});
+  setTimeout(()=>process.exit(1), 5000).unref();
+  server.close(()=>{ try{ db.close(); }catch{} process.exit(0); });
+  server.closeIdleConnections?.();
+});
+process.on('unhandledRejection', e=>log({level:'error',msg:'unhandledRejection',err:String(e)}));
+process.on('uncaughtException', e=>{ log({level:'fatal',msg:'uncaughtException',err:String(e&&e.stack||e)}); process.exit(1); });

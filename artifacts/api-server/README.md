@@ -9,9 +9,9 @@ DB_PATH=./data/b1.db PORT=8791 node server.js
 DB_PATH=/tmp/t.db PORT=8791 AUTH_RATE_LIMIT=1000 node server.js &  node test-b1.js
 ```
 
-Env: `PORT`, `DB_PATH`, `COOKIE_SECURE=1` (required behind HTTPS), `AUTH_RATE_LIMIT` (auth attempts/min/IP, default 20).
+Env: `PORT` (validated), `DB_PATH`, `COOKIE_SECURE=1` (required behind HTTPS), `TRUST_PROXY=1` (key rate limit by `X-Forwarded-For`; only behind a trusted proxy), `AUTH_RATE_LIMIT` (auth attempts/min/IP, default 20).
 
-Hardening added in this port: auth rate limiting, secure-cookie option, 8-char minimum password,
-feedback validation, 413 on oversize bodies, graceful shutdown.
-Still open (see `docs/roadmap.md`): login CSRF, absolute-score parity with Muse, real-host durability
+Tests: `node --test hardening.test.js` (spawns its own server on a free port); `test-b1.js` is the B1 acceptance script (needs a running server).
+
+Hardening: auth rate limiting, lowercase-normalized emails, constant-ish login timing for unknown users, config/title/feedback validation, per-user profile cap (50), 413 on oversize bodies, security headers, JSON request logs (no bodies), error boundary (500 instead of crash), request timeouts, session cleanup, graceful shutdown. (see `docs/roadmap.md`): login CSRF, absolute-score parity with Muse, real-host durability
 (SQLite on Replit/Cloud Run is ephemeral; move to Postgres), not wired to any UI yet.
