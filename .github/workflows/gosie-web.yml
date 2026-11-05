@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "artifacts/gosie/**"
+      - "artifacts/api-server/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -52,3 +53,15 @@ jobs:
       - name: Configured production build
         if: ${{ !cancelled() }}
         run: pnpm --filter @workspace/gosie build
+      - name: API server isolation and auth tests
+        if: ${{ !cancelled() }}
+        working-directory: artifacts/api-server
+        env:
+          DB_PATH: ${{ runner.temp }}/api-test.db
+          PORT: "8791"
+          AUTH_RATE_LIMIT: "1000"
+        run: |
+          node server.js &
+          sleep 2
+          node test-b1.js | tee test.log
+          ! grep -q '^FAIL' test.log
