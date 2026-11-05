@@ -4,6 +4,11 @@ modules = ["nodejs-24", "python-base-3.13"]
 runButton = "Project"
 
 [[ports]]
+localPort = 8081
+externalPort = 8081
+exposeLocalhost = true
+
+[[ports]]
 localPort = 21101
 externalPort = 3000
 exposeLocalhost = true
