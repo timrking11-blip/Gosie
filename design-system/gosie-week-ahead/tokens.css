@@ -16,6 +16,16 @@
   --gosie-bronze: #946640;
   --gosie-surface: #faf6ef;
   --gosie-line: #d8d7c9;
+  --gosie-text-muted: #59635e;
+  --gosie-text-secondary: #69726b;
+  --gosie-text-subtle: #767f77;
+  --gosie-line-soft: #e8e5dc;
+  --gosie-surface-sage: #e5eadf;
+  --gosie-surface-sand: #e8e8da;
+  --gosie-surface-day: #e9e8dc;
+  --gosie-surface-control: #f2eee4;
+  --gosie-surface-warm: #f3f0e8;
+  --gosie-surface-peach: #f7e8d7;
 
   /* Brand artwork colors; these match the supplied SVGs, not the UI values. */
   --gosie-logo-forest: #18372f;
@@ -45,7 +55,7 @@
   --gosie-focus-offset: 3px;
   --gosie-transition-fast: 200ms;
   --gosie-transition-progress: 250ms;
-  --gosie-shadow-card: 0 8px 24px rgb(43 27 18 / 3%);
+  --gosie-shadow-card: 0 8px 24px #2b1b1208;
 }
 
 @media (prefers-reduced-motion: reduce) {
