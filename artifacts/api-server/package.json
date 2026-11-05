@@ -1,0 +1,16 @@
+{
+  "name": "@workspace/api-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gosie API server (Node >= 22.5). Serves the built web app same-origin.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test hardening.test.js storage.contract.test.js static.test.js"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "pg-mem": "3.0.5"
+  }
+}

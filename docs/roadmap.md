@@ -63,3 +63,9 @@ Product = works for a real user with persistence; Demo = promotional illustratio
 9. **B4 (only after approval)** — read-only on-demand Calendar, token custody server-side, disconnect/delete.
 
 **MVP is complete only when** a new user can register, onboard, see Week/Weekend results honoring their constraints, give feedback that changes ranking after a restart, export/import their profile, and cannot access anyone else's data — each demonstrated by the acceptance checks above, not by a green build.
+
+## Update: persistence and web wiring (PR #4)
+
+- Done: storage interface (memory, SQLite, Postgres with migrations); API serves the built web app same-origin; web Account panel (register/sign in, list/create/delete profiles) via relative /api URLs.
+- Next increments: preference editor, Week/Weekend views from /week and /weekend, feedback and import/export UI, Replit deploy switched to run node artifacts/api-server/server.js (needs DATABASE_URL secret, COOKIE_SECURE=1, TRUST_PROXY=1), verification against real Postgres.
+

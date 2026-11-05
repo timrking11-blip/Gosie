@@ -24,7 +24,7 @@ function call(port, method, p, { cookie, csrf, body, raw, headers: extra } = {})
 async function start(env={}){
   const port = await freePort();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(),'gosie-api-'));
-  const child = spawn(process.execPath, [path.join(__dirname,'server.js')], { env: Object.assign({}, process.env, {PORT:String(port), DB_PATH:path.join(dir,'t.db'), AUTH_RATE_LIMIT:'1000'}, env), stdio:['ignore','pipe','pipe'] });
+  const child = spawn(process.execPath, [path.join(__dirname,'server.js')], { env: Object.assign({}, process.env, {PORT:String(port), DB_PATH:path.join(dir,'t.db'), AUTH_RATE_LIMIT:'1000', STATIC_DIR:path.join(dir,'no-web')}, env), stdio:['ignore','pipe','pipe'] });
   let out=''; child.stdout.on('data',d=>out+=d); child.stderr.on('data',d=>out+=d);
   for(let i=0;i<50;i++){ try{ await call(port,'GET','/health'); break; }catch{ await new Promise(r=>setTimeout(r,100)); } }
   return { port, child, logs:()=>out, dir };

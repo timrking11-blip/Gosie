@@ -15,3 +15,10 @@ Tests: `node --test hardening.test.js` (spawns its own server on a free port); `
 
 Hardening: auth rate limiting, lowercase-normalized emails, constant-ish login timing for unknown users, config/title/feedback validation, per-user profile cap (50), 413 on oversize bodies, security headers, JSON request logs (no bodies), error boundary (500 instead of crash), request timeouts, session cleanup, graceful shutdown. (see `docs/roadmap.md`): login CSRF, absolute-score parity with Muse, real-host durability
 (SQLite on Replit/Cloud Run is ephemeral; move to Postgres), not wired to any UI yet.
+
+## Storage, migrations and same-origin web serving
+
+- Storage: DATABASE_URL selects Postgres (Replit Postgres; never commit it), STORAGE=memory selects in-memory, otherwise SQLite at DB_PATH.
+- Postgres migrations in migrations/*.sql run at startup under an advisory lock. Set TEST_DATABASE_URL to run the contract test against a real Postgres.
+- If STATIC_DIR (default ../gosie/dist/public) contains index.html, the server serves the web app and the API moves under /api/* (/health stays available); GET /api/me returns the session and CSRF token. Set STATIC_DIR to a nonexistent path to keep the legacy unprefixed routes.
+

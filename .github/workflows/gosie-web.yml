@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "24"
       - name: Install locked web dependencies
-        run: pnpm --filter @workspace/gosie... install --frozen-lockfile
+        run: pnpm --filter "@workspace/gosie..." --filter @workspace/api-server install --frozen-lockfile
       - name: Load configured build environment
         run: |
           python3 - <<'PY'
@@ -58,6 +58,7 @@ jobs:
         working-directory: artifacts/api-server
         env:
           DB_PATH: ${{ runner.temp }}/api-test.db
+          STATIC_DIR: ${{ runner.temp }}/no-web
           PORT: "8791"
           AUTH_RATE_LIMIT: "1000"
         run: |
@@ -67,4 +68,4 @@ jobs:
           ! grep -q '^FAIL' test.log
       - name: Hardening tests (API and mobile static server)
         if: ${{ !cancelled() }}
-        run: node --test artifacts/api-server/hardening.test.js artifacts/gosie-mobile/server/serve.test.js
+        run: node --test artifacts/api-server/hardening.test.js artifacts/api-server/storage.contract.test.js artifacts/api-server/static.test.js artifacts/gosie-mobile/server/serve.test.js

@@ -6,6 +6,7 @@ import { GooseMark, Wordmark } from "@/components/gosie/Logo";
 import { PromoVideo } from "@/components/gosie/PromoVideo";
 import { WeekMock } from "@/components/gosie/WeekMock";
 import { WeekendMock } from "@/components/gosie/WeekendMock";
+import { Account } from "@/components/gosie/Account";
 
 const TITLE = "Gosie — A little help for everything ahead";
 const DESC = "Explore Gosie's personal-intelligence concept through illustrative demos: group sample events, re-rank fictional weekend ideas and open example explanations. Release date TBA.";
@@ -50,6 +51,7 @@ function Index() {
         <WeekendSection />
         <How />
         <Companion />
+        <Account />
         <Release />
         <Faq />
       </main>
@@ -290,7 +292,7 @@ function Release() {
           <span className="h-1.5 w-1.5 rounded-full bg-gold" /> In development · Release date to be announced
         </span>
         <h2 className="mt-8 text-4xl font-light tracking-tight sm:text-6xl">The experience is <em className="text-peach">taking shape.</em></h2>
-        <p className="mx-auto mt-6 max-w-xl text-cream/80">This website offers illustrative demos only. The full personal-intelligence app is not available here, and there is no product sign-up or calendar connection.</p>
+        <p className="mx-auto mt-6 max-w-xl text-cream/80">This website offers illustrative demos only. The full personal-intelligence app is not available here, and there is no calendar connection. Where early-access accounts are enabled, they save only the profiles you create.</p>
         <a href="#preview" className={cn(btnPrimary, "mt-10")}>Explore the preview <ArrowRight className="h-4 w-4" /></a>
       </div>
     </section>
@@ -300,9 +302,9 @@ function Release() {
 function Faq() {
   const qs = [
     ["What is Gosie?", "A personal-intelligence concept for the week and weekend ahead. This promotional website contains fictional demos: select a hero preview, group sample events, change the social context of sample ideas, and open example explanations."],
-    ["Is Gosie available now?", "The website demos are available to explore. The full product is in development, with release date to be announced. This website has no product sign-up."],
+    ["Is Gosie available now?", "The website demos are available to explore. The full product is in development, with release date to be announced. Where early-access accounts are enabled, they save only the profiles you create."],
     ["Does Gosie connect to my calendar?", "No. All displayed events are fictional and there is no live calendar integration. Calendar connections are planned for the future, not implemented here."],
-    ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples; you cannot edit preferences, save, dismiss or rate ideas, or train a learning system here."],
+    ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples; you cannot edit preferences, save, dismiss or rate ideas, or train a learning system in these previews."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-5 py-24 sm:py-32">
@@ -332,7 +334,7 @@ function Footer() {
           <p className="mt-2 text-xs text-cream/45">Gosie is a working product name and identity.</p>
         </div>
         <div className="max-w-sm text-xs leading-relaxed text-cream/50">
-          <p>This website demonstrates fictional content. It does not connect to your calendar, collect personal preferences, or save feedback. Future connections are planned, not available here.</p>
+          <p>This website demonstrates fictional content. The previews do not connect to your calendar or save feedback. Where early-access accounts are enabled, they store only the profiles you create. Future connections are planned, not available here.</p>
           <p className="mt-3">© 2026 Gosie. All previews show fictional data.</p>
         </div>
       </div>
