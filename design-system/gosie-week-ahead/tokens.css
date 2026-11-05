@@ -1,0 +1,60 @@
+/*
+ * Gosie Week Ahead — extracted design tokens.
+ * Source: artifacts/gosie-week-ahead/src/index.css and App.tsx.
+ */
+
+:root {
+  /* Interface palette */
+  --gosie-forest: #17382b;
+  --gosie-sage: #99b6a5;
+  --gosie-cream: #f5f0e5;
+  --gosie-peach: #ebaf86;
+  --gosie-ink: #0a1016;
+  --gosie-midnight: #0f141d;
+  --gosie-espresso: #2b1b12;
+  --gosie-gold: #d5ac7c;
+  --gosie-bronze: #946640;
+  --gosie-surface: #faf6ef;
+  --gosie-line: #d8d7c9;
+
+  /* Brand artwork colors; these match the supplied SVGs, not the UI values. */
+  --gosie-logo-forest: #18372f;
+  --gosie-logo-cream: #f5f0e6;
+  --gosie-logo-peach: #edad87;
+
+  /* Typography */
+  --gosie-font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --gosie-font-ui: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  --gosie-font-mono: "SFMono-Regular", Consolas, monospace;
+
+  /* Shape and spacing */
+  --gosie-radius-base: 1rem;
+  --gosie-radius-card: 18px;
+  --gosie-radius-control: 10px;
+  --gosie-radius-pill: 999px;
+  --gosie-space-1: 4px;
+  --gosie-space-2: 8px;
+  --gosie-space-3: 12px;
+  --gosie-space-4: 16px;
+  --gosie-space-5: 24px;
+  --gosie-space-6: 32px;
+
+  /* Interaction */
+  --gosie-focus-color: var(--gosie-bronze);
+  --gosie-focus-width: 3px;
+  --gosie-focus-offset: 3px;
+  --gosie-transition-fast: 200ms;
+  --gosie-transition-progress: 250ms;
+  --gosie-shadow-card: 0 8px 24px rgb(43 27 18 / 3%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
