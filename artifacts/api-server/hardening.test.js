@@ -9,9 +9,9 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 function freePort(){ return new Promise(r=>{ const s=net.createServer().listen(0,()=>{ const p=s.address().port; s.close(()=>r(p)); }); }); }
-function call(port, method, p, { cookie, csrf, body, raw } = {}){
+function call(port, method, p, { cookie, csrf, body, raw, headers: extra } = {}){
   return new Promise((resolve,reject)=>{
-    const headers = {'Content-Type':'application/json'};
+    const headers = Object.assign({'Content-Type':'application/json'}, extra);
     if(cookie) headers.Cookie = cookie; if(csrf) headers['X-CSRF-Token'] = csrf;
     const req = http.request({host:'127.0.0.1',port,path:p,method,headers}, res=>{
       let t=''; res.on('data',c=>t+=c); res.on('end',()=>{ let j=null; try{ j=JSON.parse(t); }catch{} resolve({status:res.statusCode,headers:res.headers,json:j,text:t}); });
@@ -120,7 +120,7 @@ test('login rate limit returns 429', async()=>{
 test('TRUST_PROXY keys the limiter by X-Forwarded-For', async()=>{
   const R = await start({AUTH_RATE_LIMIT:'1', TRUST_PROXY:'1'});
   try{
-    const hit = ip => new Promise((res,rej)=>{ const q=http.request({host:'127.0.0.1',port:R.port,path:'/auth/login',method:'POST',headers:{'X-Forwarded-For':ip}},r=>{ r.resume(); r.on('end',()=>res(r.statusCode)); }); q.on('error',rej); q.end('{"email":"a@b.co","password":"wrong-pass-1"}'); });
+    const hit = ip => new Promise((res,rej)=>{ const q=http.request({host:'127.0.0.1',port:R.port,path:'/auth/login',method:'POST',headers:{'X-Forwarded-For':ip,'Content-Type':'application/json'}},r=>{ r.resume(); r.on('end',()=>res(r.statusCode)); }); q.on('error',rej); q.end('{"email":"a@b.co","password":"wrong-pass-1"}'); });
     assert.strictEqual(await hit('1.1.1.1'),401);
     assert.strictEqual(await hit('2.2.2.2'),401);
     assert.strictEqual(await hit('1.1.1.1'),429);
@@ -143,6 +143,30 @@ test('requests are logged as JSON without bodies or secrets', async()=>{
   await new Promise(r=>setTimeout(r,100));
   assert.match(S.logs(), /"path":"\/auth\/login"/);
   assert.doesNotMatch(S.logs(), /super-secret-pw/);
+});
+
+test('login CSRF: cross-origin and non-JSON state-changing requests are rejected', async()=>{
+  const body={email:'csrf@example.com',password:'password-123'};
+  await call(S.port,'POST','/auth/register',{body});
+  const evil = await call(S.port,'POST','/auth/login',{body,headers:{Origin:'https://evil.example'}});
+  assert.strictEqual(evil.status,403); assert.strictEqual(evil.json.error,'origin_not_allowed');
+  const nul = await call(S.port,'POST','/auth/login',{body,headers:{Origin:'null'}});
+  assert.strictEqual(nul.status,403);
+  const form = await call(S.port,'POST','/auth/login',{raw:'email=a&password=b',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  assert.strictEqual(form.status,415);
+  const same = await call(S.port,'POST','/auth/login',{body,headers:{Origin:'http://127.0.0.1:'+S.port}});
+  assert.strictEqual(same.status,200);
+  assert.ok(!evil.headers['set-cookie']);
+});
+
+test('ALLOWED_ORIGINS permits a configured origin only', async()=>{
+  const R = await start({ALLOWED_ORIGINS:'https://app.example.com'});
+  try{
+    const body={email:'ao@example.com',password:'password-123'};
+    await call(R.port,'POST','/auth/register',{body});
+    assert.strictEqual((await call(R.port,'POST','/auth/login',{body,headers:{Origin:'https://app.example.com'}})).status,200);
+    assert.strictEqual((await call(R.port,'POST','/auth/login',{body,headers:{Origin:'https://other.example'}})).status,403);
+  } finally { R.child.kill(); }
 });
 
 test('SIGTERM shuts down cleanly (non-Windows)', { skip: process.platform==='win32' }, async()=>{
