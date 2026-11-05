@@ -7,13 +7,13 @@ settings:
 catalogs:
   default:
     '@replit/vite-plugin-cartographer':
-      specifier: latest
+      specifier: 0.6.1
       version: 0.6.1
     '@replit/vite-plugin-dev-banner':
-      specifier: latest
+      specifier: 0.1.2
       version: 0.1.2
     '@replit/vite-plugin-runtime-error-modal':
-      specifier: latest
+      specifier: 0.0.6
       version: 0.0.6
     '@tailwindcss/vite':
       specifier: ^4.2.1

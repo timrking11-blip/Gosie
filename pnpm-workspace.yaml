@@ -3,9 +3,9 @@ packages:
   - lib/*
 
 catalog:
-  "@replit/vite-plugin-cartographer": latest
-  "@replit/vite-plugin-dev-banner": latest
-  "@replit/vite-plugin-runtime-error-modal": latest
+  "@replit/vite-plugin-cartographer": 0.6.1
+  "@replit/vite-plugin-dev-banner": 0.1.2
+  "@replit/vite-plugin-runtime-error-modal": 0.0.6
   "@tailwindcss/vite": ^4.2.1
   "@tanstack/react-query": ^5.101.1
   "@types/node": ^22.16.5

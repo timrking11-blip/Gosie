@@ -11,6 +11,8 @@ const PORT = Number(process.env.PORT || 8791);
 if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) { console.error(JSON.stringify({fatal:'invalid PORT', value:process.env.PORT})); process.exit(1); }
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'b1.db');
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
+// Extra browser origins (comma-separated, e.g. https://app.example.com) allowed to call the API.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const AUTH_RATE_LIMIT = Number(process.env.AUTH_RATE_LIMIT) || 20;
 const MAX_BODY = 65536;
@@ -99,6 +101,17 @@ const server = http.createServer((req,res)=>{
 function handle(req,res,url,body,tooLarge){
   {
     if(tooLarge) return send(res,413,{error:'payload_too_large'});
+    // Login-CSRF defence: state-changing requests must be same-origin (or an allowed origin) and JSON,
+    // which a cross-site HTML form cannot send.
+    if(req.method!=='GET' && req.method!=='HEAD'){
+      const origin=req.headers.origin;
+      if(origin){
+        let oh=null; try{ oh=new URL(origin).host; }catch{}
+        if(origin!=='null' && oh && (oh===req.headers.host || ALLOWED_ORIGINS.includes(origin))){ /* ok */ }
+        else return send(res,403,{error:'origin_not_allowed'});
+      }
+      if(body && !/^application\/json\b/i.test(req.headers['content-type']||'')) return send(res,415,{error:'json_required'});
+    }
     let j={}; if(body){ try{ j=JSON.parse(body); }catch{ return send(res,400,{error:'invalid_json'}); } }
     if(j===null || typeof j!=='object' || Array.isArray(j)) return send(res,400,{error:'invalid_json'});
     if(req.method==='POST' && (url.pathname==='/auth/register' || url.pathname==='/auth/login') && rateLimited(req)) return send(res,429,{error:'rate_limited'});

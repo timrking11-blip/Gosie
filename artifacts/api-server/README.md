@@ -9,7 +9,7 @@ DB_PATH=./data/b1.db PORT=8791 node server.js
 DB_PATH=/tmp/t.db PORT=8791 AUTH_RATE_LIMIT=1000 node server.js &  node test-b1.js
 ```
 
-Env: `PORT` (validated), `DB_PATH`, `COOKIE_SECURE=1` (required behind HTTPS), `TRUST_PROXY=1` (key rate limit by `X-Forwarded-For`; only behind a trusted proxy), `AUTH_RATE_LIMIT` (auth attempts/min/IP, default 20).
+Env: `PORT` (validated), `DB_PATH`, `COOKIE_SECURE=1` (required behind HTTPS), `TRUST_PROXY=1` (key rate limit by `X-Forwarded-For`; only behind a trusted proxy), `AUTH_RATE_LIMIT` (auth attempts/min/IP, default 20), `ALLOWED_ORIGINS` (comma-separated extra browser origins; same-origin always allowed). Login-CSRF defence: state-changing requests with a foreign/`null` `Origin` get 403, and bodies must be `application/json` (415 otherwise).
 
 Tests: `node --test hardening.test.js` (spawns its own server on a free port); `test-b1.js` is the B1 acceptance script (needs a running server).
 
