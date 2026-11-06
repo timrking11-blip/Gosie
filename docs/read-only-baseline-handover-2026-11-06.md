@@ -19,3 +19,21 @@ This note records the read-only repository baseline reviewed on 6 November 2026.
 ## Evidence limits
 
 The revision observations above describe the inspected repository and public GitHub records at the time of review. They do not prove which revision is deployed, whether SQLite data survives restart or redeploy, or that API security behavior is active on a deployed service.
+
+## Worktree verification addendum — 6 November 2026
+
+These are local worktree results, not GitHub Actions, production, or published-preview results. The exact source revision tested was `a3c4e78f8c0c9d39c2c26009b58bd298c9e5d9c7` (`main`). The worktree was clean immediately before the checks, and `HEAD` was unchanged afterward. The reviewed GitHub `main` remains `1e0ce3d82187c2cbbea4f2341ff1e21b1d89813f`; no push or deployment was performed, and this addendum does not claim the tested SHA or results are on that remote.
+
+| Check | Result at `a3c4e78f8c0c9d39c2c26009b58bd298c9e5d9c7` |
+| --- | --- |
+| `pnpm --filter @workspace/gosie test` | Pass: 11 tests across 2 files |
+| Gosie production build | Pass with `PORT=23967 BASE_PATH=/`, matching `artifacts/gosie/.replit-artifact/artifact.toml` |
+| `pnpm --filter @workspace/gosie-mobile typecheck` | Pass |
+| `pnpm --filter @workspace/gosie-mobile build` | Pass: iOS and Android bundles and manifests generated |
+| `pnpm --filter @workspace/gosie typecheck` | Fail: two existing TS2305 errors for `Group` and `Separator` in `artifacts/gosie/src/components/ui/resizable.tsx`; unchanged here |
+
+The mobile Expo development workflow started and bundled the Weekend Ahead route. This is startup evidence only, not native-device or interactive behavior verification.
+
+The first static capture at `/weekend` was blank. A later static capture of `/(tabs)/weekend` at 360px showed the budget/travel controls fitting and the temporary/demo-only wording visible. This does not establish that the mobile preview is fully verified: selector taps were not exercised, and larger text and selected-state accessibility were not checked.
+
+The mobile build regenerated `artifacts/gosie-mobile/static-build/` output after the clean pre-check snapshot. These generated files are local build output, not evidence of a source commit on GitHub `main`.

@@ -6,7 +6,6 @@ runButton = "Project"
 [[ports]]
 localPort = 8081
 externalPort = 8081
-exposeLocalhost = true
 
 [[ports]]
 localPort = 21101
