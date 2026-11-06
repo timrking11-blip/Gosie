@@ -13,15 +13,24 @@ type Idea = {
   kind: string;
   when: string;
   budget: string;
-  travel: string;
+  budgetLevel: number;
+  travelMinutes: number;
   fit: Record<Context, number>;
   why: string;
 };
+const budgetOptions = [
+  { label: 'Up to $', value: 1 },
+  { label: 'Up to $$', value: 2 },
+  { label: 'Any', value: null },
+] as const;
+type BudgetLimit = (typeof budgetOptions)[number]['value'];
+const travelOptions = [10, 15, 25] as const;
+
 const ideas: Idea[] = [
-  { title: 'Late set at a small jazz room', kind: 'Music', when: 'Sat · evening', budget: '$$', travel: '20 min', fit: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, why: 'Sample interest: live music. The Saturday timing is fictional.' },
-  { title: 'Restored-print film night', kind: 'Film', when: 'Fri · 8 pm', budget: '$', travel: '12 min', fit: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, why: 'Sample interest: classic cinema. The travel estimate is illustrative.' },
-  { title: 'Long lunch, shared plates', kind: 'Food', when: 'Sun · midday', budget: '$$', travel: '15 min', fit: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, why: 'Example preference: unhurried weekends and a moderate budget.' },
-  { title: 'Riverside walk & market', kind: 'Outdoors', when: 'Sun · morning', budget: 'Free', travel: '8 min', fit: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, why: 'Example reason: a low-key alternative to a busy week.' },
+  { title: 'Late set at a small jazz room', kind: 'Music', when: 'Sat · evening', budget: '$$', budgetLevel: 2, travelMinutes: 20, fit: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, why: 'Sample interest: live music. This event and its details are fictional.' },
+  { title: 'Restored-print film night', kind: 'Film', when: 'Fri · 8 pm', budget: '$', budgetLevel: 1, travelMinutes: 12, fit: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, why: 'Sample interest: classic cinema. This event and its details are fictional.' },
+  { title: 'Long lunch, shared plates', kind: 'Food', when: 'Sun · midday', budget: '$$', budgetLevel: 2, travelMinutes: 15, fit: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, why: 'Sample interest: relaxed meals. No personal preference was used to create this fictional example.' },
+  { title: 'Riverside walk & market', kind: 'Outdoors', when: 'Sun · morning', budget: 'Free', budgetLevel: 0, travelMinutes: 8, fit: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, why: 'Sample interest: time outdoors. This event and its details are fictional.' },
 ];
 
 function Header() {
@@ -77,8 +86,8 @@ function IdeaCard({
       <Text style={styles.ideaMeta}>{idea.kind} <Text style={styles.metaDot}>·</Text> {idea.when}</Text>
       <Text style={styles.ideaTitle}>{idea.title}</Text>
       <View style={styles.cardFooter}>
-        <View style={styles.metaItem}><Feather name="tag" size={12} color={C.gold} /><Text style={styles.detailText}>{idea.budget}</Text></View>
-        <View style={styles.metaItem}><Feather name="map-pin" size={12} color={C.gold} /><Text style={styles.detailText}>{idea.travel} away</Text></View>
+        <View style={styles.metaItem}><Feather name="tag" size={12} color={C.gold} /><Text style={styles.detailText}>Sample {idea.budget}</Text></View>
+        <View style={styles.metaItem}><Feather name="map-pin" size={12} color={C.gold} /><Text style={styles.detailText}>{idea.travelMinutes} min · sample</Text></View>
       </View>
       <View style={styles.feedbackActions}>
         <TouchableOpacity
@@ -137,11 +146,16 @@ function IdeaCard({
 
 export default function WeekendScreen() {
   const [context, setContext] = useState<Context>('All');
+  const [budgetLimit, setBudgetLimit] = useState<BudgetLimit>(2);
+  const [travelLimit, setTravelLimit] = useState<(typeof travelOptions)[number]>(25);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [savedIdeas, setSavedIdeas] = useState<string[]>([]);
   const [dismissedIdeas, setDismissedIdeas] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>({});
-  const ranked = [...ideas].sort((a, b) => b.fit[context] - a.fit[context]);
+  const withinSampleLimits = ideas.filter((idea) =>
+    (budgetLimit === null || idea.budgetLevel <= budgetLimit) && idea.travelMinutes <= travelLimit,
+  );
+  const ranked = [...withinSampleLimits].sort((a, b) => b.fit[context] - a.fit[context]);
   const visibleIdeas = ranked.filter((idea) => !dismissedIdeas.includes(idea.title));
   const dismissedList = ideas.filter((idea) => dismissedIdeas.includes(idea.title));
   const ratedCount = Object.keys(ratings).length;
@@ -154,7 +168,7 @@ export default function WeekendScreen() {
           <View style={styles.heroHalo} />
           <Text style={styles.eyebrow}>Weekend Ahead · life in motion</Text>
           <Text style={styles.heroTitle}>Leave a little room for <Text style={styles.heroItalic}>something good.</Text></Text>
-          <Text style={styles.heroBody}>A late jazz set, a restored film, a long lunch with friends. Choose who's coming—solo, friends, a date or a group—to reorder fictional ideas using preset scores. Budget, travel and pace labels are fixed examples.</Text>
+          <Text style={styles.heroBody}>Choose who's coming to reorder fictional ideas using preset scores. This demo also lets you set sample budget and travel limits to filter the list. These temporary controls are not saved preferences, and the listings are not real.</Text>
           <View style={styles.exampleTag}><View style={styles.exampleDot} /><Text style={styles.exampleText}>Example demo</Text></View>
         </View>
 
@@ -174,10 +188,48 @@ export default function WeekendScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <View style={styles.limitPanel}>
+            <Text style={styles.limitHeading}>Try sample limits</Text>
+            <Text style={styles.limitLabel}>Budget cap · illustrative</Text>
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample budget cap">
+              {budgetOptions.map((option) => {
+                const selected = budgetLimit === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.label}
+                    onPress={() => setBudgetLimit(option.value)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${option.label} sample budget cap`}
+                    accessibilityState={{ selected }}
+                    style={[styles.limitOption, selected && styles.limitOptionSelected]}
+                  >
+                    <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{option.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.limitLabel}>Travel cap · illustrative</Text>
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample travel cap">
+              {travelOptions.map((minutes) => {
+                const selected = travelLimit === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    onPress={() => setTravelLimit(minutes)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Up to ${minutes} minutes sample travel cap`}
+                    accessibilityState={{ selected }}
+                    style={[styles.limitOption, selected && styles.limitOptionSelected]}
+                  >
+                    <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{minutes} min</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.limitNote}>These controls filter fictional examples on this screen only. Selections are not saved or synced; prices and travel times are illustrative.</Text>
+          </View>
           <View style={styles.preferenceList}>
-            <View style={styles.preference}><Feather name="dollar-sign" size={13} color={C.forest} /><Text style={styles.preferenceText}>Budget · up to $$</Text></View>
-            <View style={styles.preference}><Feather name="map" size={13} color={C.forest} /><Text style={styles.preferenceText}>Travel · under 25 min</Text></View>
-            <View style={styles.preference}><Feather name="coffee" size={13} color={C.forest} /><Text style={styles.preferenceText}>Pace · unhurried</Text></View>
+            <View style={styles.preference}><Feather name="coffee" size={13} color={C.forest} /><Text style={styles.preferenceText}>Pace · illustrative label</Text></View>
           </View>
           <View style={styles.demoNotice} accessibilityLiveRegion="polite">
             <Text style={styles.demoNoticeTitle}>Demo feedback · current session only</Text>
@@ -186,7 +238,7 @@ export default function WeekendScreen() {
           </View>
 
           <View style={styles.rankedHeader}>
-            <Text style={styles.rankedLabel}>Re-ranked for <Text style={styles.rankedActive}>{context}</Text></Text>
+            <Text style={styles.rankedLabel}>Sample matches · <Text style={styles.rankedActive}>{context}</Text></Text>
             <Text style={styles.rankedCount}>{visibleIdeas.length.toString().padStart(2, '0')} IDEAS</Text>
           </View>
           <View style={styles.ideaList}>
@@ -231,9 +283,9 @@ export default function WeekendScreen() {
           )}
           <View style={styles.note}>
             <Feather name="info" size={15} color={C.bronze} />
-          <Text style={styles.noteText}>Try the context pills, feedback buttons and explanation controls. Feedback does not change the preset ranking.</Text>
+          <Text style={styles.noteText}>Budget and travel caps filter this fictional list. Social context orders the remaining ideas by preset scores; feedback does not change their ranking.</Text>
           </View>
-          <Text style={styles.disclaimer}>Illustrative preview · fictional data · not real listings, prices or availability. Feedback is not saved or synced.</Text>
+          <Text style={styles.disclaimer}>Illustrative preview · fictional listings, prices and travel times · limits and feedback are temporary and not saved or synced.</Text>
           <View style={styles.footer}>
             <Text style={styles.footerText}>A little help for everything ahead.</Text>
             <Text style={styles.footerBrand}>gosie.</Text>
@@ -273,7 +325,16 @@ const styles = StyleSheet.create({
   contextSelected: { backgroundColor: C.forest, borderColor: C.forest },
   contextText: { color: C.mutedForeground, fontFamily: 'Manrope_600SemiBold', fontSize: 11 },
   contextSelectedText: { color: C.cream },
-  preferenceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 13 },
+  limitPanel: { marginTop: 15, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 13, backgroundColor: C.secondary },
+  limitHeading: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  limitLabel: { color: C.mutedForeground, fontFamily: 'Manrope_600SemiBold', fontSize: 10, marginTop: 10, marginBottom: 6 },
+  limitOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  limitOption: { minHeight: 36, justifyContent: 'center', alignItems: 'center', borderRadius: 18, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, backgroundColor: C.cream },
+  limitOptionSelected: { borderColor: C.forest, backgroundColor: C.forest },
+  limitOptionText: { color: C.mutedForeground, fontFamily: 'Manrope_700Bold', fontSize: 10 },
+  limitOptionTextSelected: { color: C.cream },
+  limitNote: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, lineHeight: 14, marginTop: 10 },
+  preferenceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 9 },
   preference: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, backgroundColor: C.secondary, paddingHorizontal: 8, paddingVertical: 7 },
   preferenceText: { color: C.forest, fontFamily: 'Manrope_600SemiBold', fontSize: 9 },
   rankedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 22, marginBottom: 10 },
