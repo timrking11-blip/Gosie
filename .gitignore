@@ -1,5 +1,7 @@
 node_modules/
 dist/
+artifacts/gosie-mobile/static-build/
+artifacts/gosie-mobile/.metro-cache/
 .migration-backup/
 attached_assets/
 .cache/

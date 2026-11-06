@@ -175,7 +175,7 @@ function SectionHead({ eyebrow, title, children, light = false }: { eyebrow: str
 function Idea() {
   const pillars = [
     { icon: Compass, t: "Clarity for work and real life", d: "Explore fictional meetings, personal plans and errands. Switch between category and chronological grouping." },
-    { icon: Sparkles, t: "Possibilities for your weekends", d: "Choose a social context to reorder sample ideas using preset scores. Budget, travel and pace are example assumptions, not editable preferences." },
+    { icon: Sparkles, t: "Possibilities for your weekends", d: "Choose a social context to reorder sample ideas using preset scores. The Gosie Mobile demo also has temporary budget and travel limits that filter fictional ideas; they are not saved preferences. Pace remains an illustrative label." },
     { icon: SlidersHorizontal, t: "Recommendations you understand", d: "Open and close an example explanation for each fictional idea. The demo does not save feedback or learn from your activity." },
   ];
   return (
@@ -228,8 +228,8 @@ function WeekendSection() {
         <div className="order-1 lg:order-2">
           <p className="eyebrow text-peach">Weekend Ahead · life in motion</p>
           <h2 className="mt-4 text-4xl font-light leading-[1.05] tracking-tight sm:text-5xl">Leave a little room for <em className="text-peach">something good.</em></h2>
-          <p className="mt-5 text-base text-cream/80 sm:text-lg">A fictional jazz set, film night or long lunch. Choose solo, friends, a date or a group to see the sample ideas reorder using preset scores. Budget, travel and pace labels are fixed examples, not editable controls.</p>
-          <p className="mt-6 text-sm text-cream/75">Try the social-context buttons and open an example explanation. No live listings or personal history are used.</p>
+          <p className="mt-5 text-base text-cream/80 sm:text-lg">A fictional jazz set, film night or long lunch. On this website, choose a social context to reorder sample ideas using preset scores. The Gosie Mobile demo also lets you adjust temporary budget and travel limits to filter fictional examples. Those selections are not saved preferences or synced; pace remains an illustrative label.</p>
+          <p className="mt-6 text-sm text-cream/75">Try the social-context buttons and open an example explanation. No live listings, real prices or personal history are used.</p>
         </div>
       </div>
     </section>
@@ -239,8 +239,8 @@ function WeekendSection() {
 function How() {
   const steps = [
     { n: "01", t: "Choose a demo view", d: "Use the hero preview selector on smaller screens, or explore both demos side by side on desktop. All content is illustrative." },
-    { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores." },
-    { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. There are no save, dismiss or rate actions, editable preferences, or learned personalisation in this demo." },
+    { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores; the mobile demo's temporary budget and travel caps filter fictional samples locally and are not saved preferences." },
+    { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. The Gosie Mobile preview also includes save, dismiss and rating controls that change only local demo state for the current session." },
   ];
   return (
     <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-24 sm:py-32">
@@ -257,7 +257,8 @@ function How() {
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <div className="rounded-2xl bg-forest p-7 text-cream">
           <p className="eyebrow text-sage">Try on this website</p>
-          <p className="mt-3 text-sm text-cream/80">Hero preview selection, sample week grouping, social-context ranking of fictional weekend ideas, and example explanation toggles. No data is saved and no preferences are learned.</p>
+          <p className="mt-3 text-sm text-cream/80">Hero preview selection, sample week grouping, social-context ranking of fictional weekend ideas, and example explanation toggles. This website does not save data or learn preferences.</p>
+          <p className="mt-3 text-sm text-cream/80">The Gosie Mobile preview also has temporary budget and travel caps that filter fictional ideas, plus save, dismiss and rating controls. These affect only local demo state; nothing is stored or synced, and the limits are not saved preferences.</p>
         </div>
         <div className="rounded-2xl border border-dashed border-forest/30 p-7">
           <p className="eyebrow text-forest/70">Planned · future</p>
@@ -302,7 +303,7 @@ function Faq() {
     ["What is Gosie?", "A personal-intelligence concept for the week and weekend ahead. This promotional website contains fictional demos: select a hero preview, group sample events, change the social context of sample ideas, and open example explanations."],
     ["Is Gosie available now?", "The website demos are available to explore. The full product is in development, with release date to be announced. This website has no product sign-up."],
     ["Does Gosie connect to my calendar?", "No. All displayed events are fictional and there is no live calendar integration. Calendar connections are planned for the future, not implemented here."],
-    ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. Budget, travel and pace are fixed examples; you cannot edit preferences, save, dismiss or rate ideas, or train a learning system here."],
+      ["How are suggestions chosen?", "The recommendations and scores are hardcoded examples. Selecting a social context reorders those ideas using preset scores. Explanations describe sample interests, not your activity. The Gosie Mobile preview has local-only budget and travel caps that filter fictional sample ideas; those selections are not saved preferences or synced. Pace is an illustrative label. No listing, price or travel time is real. The website has no save, dismiss or rate actions; those controls in the Gosie Mobile preview change only temporary local demo state and do not persist or sync."],
   ];
   return (
     <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-5 py-24 sm:py-32">

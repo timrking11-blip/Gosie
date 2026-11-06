@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "artifacts/gosie/**"
+      - "artifacts/gosie-week-ahead/**"
       - "artifacts/api-server/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -61,10 +62,100 @@ jobs:
           PORT: "8791"
           AUTH_RATE_LIMIT: "1000"
         run: |
-          node server.js &
-          sleep 2
-          node test-b1.js | tee test.log
-          ! grep -q '^FAIL' test.log
+          set -euo pipefail
+          node server.js >"$RUNNER_TEMP/api-server.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for _ in $(seq 1 50); do
+            if node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+          node test-b1.js | tee "$RUNNER_TEMP/test-b1.log"
+          grep -q '^PASS ' "$RUNNER_TEMP/test-b1.log"
+          ! grep -q '^FAIL ' "$RUNNER_TEMP/test-b1.log"
+      - name: API persistence after restart
+        if: ${{ !cancelled() }}
+        working-directory: artifacts/api-server
+        env:
+          DB_PATH: ${{ runner.temp }}/api-test.db
+          PORT: "8791"
+          AUTH_RATE_LIMIT: "1000"
+        run: |
+          set -euo pipefail
+          node server.js >"$RUNNER_TEMP/api-server-restart.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for _ in $(seq 1 50); do
+            if node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+          node --input-type=commonjs -e '
+            const {DatabaseSync}=require("node:sqlite");
+            const db=new DatabaseSync(process.env.DB_PATH);
+            const users=db.prepare("SELECT COUNT(*) c FROM users").get().c;
+            const profiles=db.prepare("SELECT COUNT(*) c FROM profiles").get().c;
+            const feedback=db.prepare("SELECT COUNT(*) c FROM feedback").get().c;
+            const demos=db.prepare("SELECT COUNT(*) c FROM profiles WHERE is_demo=1").get().c;
+            const alex=db.prepare("SELECT id FROM profiles WHERE id=?").get("demo-alex");
+            db.close();
+            if (users<2 || profiles<6 || feedback<2 || demos!==3 || !alex) {
+              console.error(JSON.stringify({users,profiles,feedback,demos,alex:Boolean(alex)}));
+              process.exit(1);
+            }
+          '
+          node --input-type=commonjs -e '
+            const http=require("http");
+            const body=JSON.stringify({email:"test-a@b1.local",password:"TestPass-A-123"});
+            const req=http.request({host:"127.0.0.1",port:process.env.PORT,path:"/auth/login",method:"POST",headers:{"Content-Type":"application/json","Content-Length":Buffer.byteLength(body)}},res=>{
+              res.resume();
+              res.on("end",()=>process.exit(res.statusCode===200?0:1));
+            });
+            req.on("error",()=>process.exit(1));
+            req.end(body);
+          '
+      - name: Remove temporary API database
+        if: always()
+        run: rm -f "$RUNNER_TEMP/api-test.db" "$RUNNER_TEMP/api-test.db-wal" "$RUNNER_TEMP/api-test.db-shm"
       - name: Hardening tests (API and mobile static server)
         if: ${{ !cancelled() }}
         run: node --test artifacts/api-server/hardening.test.js artifacts/gosie-mobile/server/serve.test.js
+
+  week-ahead:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+      - name: Install locked Week Ahead dependencies
+        run: pnpm --filter @workspace/gosie-week-ahead... install --frozen-lockfile
+      - name: Typecheck Week Ahead
+        run: pnpm --filter @workspace/gosie-week-ahead typecheck
+      - name: Load configured Week Ahead build environment
+        run: |
+          python3 - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+          manifest = Path("artifacts/gosie-week-ahead/.replit-artifact/artifact.toml")
+          env = tomllib.loads(manifest.read_text())["services"][0]["env"]
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for name in ("PORT", "BASE_PATH"):
+                  output.write(f"{name}={env[name]}\n")
+          PY
+      - name: Build Week Ahead
+        run: pnpm --filter @workspace/gosie-week-ahead build
