@@ -239,7 +239,7 @@ function WeekendSection() {
 function How() {
   const steps = [
     { n: "01", t: "Choose a demo view", d: "Use the hero preview selector on smaller screens, or explore both demos side by side on desktop. All content is illustrative." },
-    { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores; the Gosie Mobile demo's budget and travel caps filter its sample list locally." },
+    { n: "02", t: "Try grouping and context", d: "Switch the sample week between categories and weekdays. Choose a weekend social context to reorder fictional ideas using preset scores; the mobile demo's temporary budget and travel caps filter fictional samples locally and are not saved preferences." },
     { n: "03", t: "Explore the examples", d: "Open and close the sample explanations. The Gosie Mobile preview also includes save, dismiss and rating controls that change only local demo state for the current session." },
   ];
   return (
