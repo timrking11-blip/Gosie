@@ -6,6 +6,7 @@ runButton = "Project"
 [[ports]]
 localPort = 8081
 externalPort = 8081
+exposeLocalhost = true
 
 [[ports]]
 localPort = 21101
@@ -15,10 +16,6 @@ exposeLocalhost = true
 [[ports]]
 localPort = 23967
 externalPort = 80
-
-[[ports]]
-localPort = 26028
-externalPort = 3001
 
 [postMerge]
 path = "scripts/post-merge.sh"
