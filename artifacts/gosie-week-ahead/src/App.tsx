@@ -11,6 +11,7 @@ import {
   Sparkles,
   Tag,
 } from 'lucide-react';
+import { CommunityPanel, CommunityDiscoveries } from '@workspace/community/panel';
 
 type Weekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 type EventCategory = 'Work' | 'Wellbeing' | 'Home' | 'Social';
@@ -118,7 +119,7 @@ function useLocalActionItems() {
   return { items, toggle };
 }
 
-function BrandHeader({ active }: { active: 'week' | 'outings' }) {
+function BrandHeader({ active }: { active: 'week' | 'outings' | 'communities' }) {
   return (
     <header className="topbar">
       <Link href="/" className="brand-lockup" aria-label="Gosie, Week Ahead">
@@ -128,8 +129,9 @@ function BrandHeader({ active }: { active: 'week' | 'outings' }) {
         <nav className="nav-links" aria-label="Main navigation">
           <Link href="/" className={`nav-link${active === 'week' ? ' active' : ''}`} aria-current={active === 'week' ? 'page' : undefined}>Week ahead</Link>
           <Link href="/outings" className={`nav-link${active === 'outings' ? ' active' : ''}`} aria-current={active === 'outings' ? 'page' : undefined}>Weekend ideas</Link>
+          <Link href="/communities" className={`nav-link${active === 'communities' ? ' active' : ''}`} aria-current={active === 'communities' ? 'page' : undefined}>Communities</Link>
         </nav>
-        <span className="prototype-label">Illustrative preview</span>
+        <span className="prototype-label">{active === 'communities' ? 'Moderated community' : 'Illustrative preview'}</span>
       </div>
     </header>
   );
@@ -285,6 +287,7 @@ function WeekAheadPage() {
             <WeekendTeaser />
           </aside>
         </div>
+        <CommunityDiscoveries communityHref={`${import.meta.env.BASE_URL}communities`} />
         <Footer />
       </main>
     </div>
@@ -359,6 +362,19 @@ function OutingsPage() {
   );
 }
 
+function CommunitiesPage() {
+  return (
+    <div className="app-shell">
+      <BrandHeader active="communities" />
+      <main className="page-wrap">
+        <p className="section-note">This feed contains moderated contributor suggestions, not the fictional sample data shown elsewhere in this preview.</p>
+        <CommunityPanel />
+        <footer className="app-footer">Gosie Communities · contributor-supplied details · check the source before going.</footer>
+      </main>
+    </div>
+  );
+}
+
 function Footer() {
   return <footer className="app-footer"><span className="footer-brand"><img className="footer-mark" src={`${import.meta.env.BASE_URL}brand/gosie-mark.svg`} alt="" /><strong>gosie.</strong> A little help for everything ahead.</span><span>Illustrative preview · fictional sample data</span></footer>;
 }
@@ -381,6 +397,7 @@ function Router() {
     <Switch key={location}>
       <Route path="/" component={WeekAheadPage} />
       <Route path="/outings" component={OutingsPage} />
+      <Route path="/communities" component={CommunitiesPage} />
       <Route component={NotFoundPage} />
     </Switch>
   );

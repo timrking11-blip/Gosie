@@ -6,8 +6,9 @@ on:
       - "artifacts/gosie/**"
       - "artifacts/gosie-week-ahead/**"
       - "artifacts/api-server/**"
-      - "artifacts/gosie-mobile/server/**"
+      - "artifacts/gosie-mobile/**"
       - "lib/api-client-react/**"
+      - "lib/community/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -34,8 +35,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "24"
-      - name: Install locked web dependencies
-        run: pnpm --filter @workspace/gosie... install --frozen-lockfile
+      - name: Install locked web and mobile hook-test dependencies
+        run: pnpm --filter @workspace/gosie... --filter @workspace/gosie-mobile... install --frozen-lockfile
       - name: Load configured build environment
         run: |
           python3 - <<'PY'
@@ -49,6 +50,8 @@ jobs:
           PY
       - name: Typecheck
         run: pnpm --filter @workspace/gosie typecheck
+      - name: Typecheck mobile integration
+        run: pnpm --filter @workspace/gosie-mobile typecheck
       - name: Existing and product regression tests
         run: pnpm --filter @workspace/gosie test
       - name: Dev-server private-file access checks

@@ -75,3 +75,53 @@ owned records and never link carry-over IDs to existing users' records.
 
 Do not collect real participant data, enable public registration, publish, invite
 users, or claim pilot readiness until those checks and approvals are complete.
+
+## Communities (development implementation)
+
+Communities is a separate, moderated contributor source. The 16 existing
+Weekend Ahead records and the standalone clients' illustrative schedules remain
+fictional. There is still no external live-source ingestion or calendar connector.
+
+- `GET /api/community/items` is public and returns approved, unexpired events
+  and approved evergreen gems, with approved owner comments only.
+  `?includeExpired=true` includes explicitly labeled approved past events.
+- `GET /api/community/mine` returns only the signed-in user's submissions,
+  notes and permissions. Pending and rejected records are private to that user
+  and authorized moderators.
+- `POST /api/community/items` requires a contributor or restaurant-owner grant;
+  `POST /api/community/items/:id/comments` requires a restaurant-owner grant and
+  a currently approved event. All submissions start pending.
+- Moderator queue/decisions use `/api/community/moderation` and
+  `/api/community/moderation/items|comments/:id`. Writes require session CSRF.
+  Moderators cannot approve their own submissions; decisions are terminal.
+
+No account receives a contributor, owner, or moderator role at signup. The
+operator must approve the account and assign rows in `gosie_community_roles`
+through their controlled database administration process. There is deliberately
+no HTTP role-management/self-grant endpoint, no automatic business verification,
+and no preconfigured privileged account. Restaurant comment attribution comes
+from the designated restaurant name, not the submitted request.
+**No real role assignments or invitations have been authorized by this build.**
+
+Timed events require a start and end with a timezone, ordered correctly and ending
+in the future. Clients show overlapping events on their actual dates in the
+selected week. Evergreen gems have no dates and stay outside scheduled plans.
+Dates are displayed in the viewer's local timezone. Credits/source/freshness and
+Why explanations distinguish contributor claims from verified availability.
+Account deletion cascades through contributed items, comments and grants.
+Profile exports remain profile-only, not a community contribution export.
+
+Web and Week Ahead use the same shared panel in `lib/community`; development
+Vite/Metro proxies forward `/api` to the existing local API. Native production
+builds require the approved HTTPS API base (including `/api`) in
+`EXPO_PUBLIC_GOSIE_API_URL`; this is a public routing setting, never a credential.
+Native development may use the development domain. Static mobile/Week Ahead
+hosting must route same-origin `/api` to Gosie's API; separate-origin browser
+cookie/CORS hosting is not configured by this task. No publish/runtime
+configuration or production database changes are performed here.
+
+The API regression suite now also checks role gates, pending/rejected privacy,
+approval transitions, owner attribution, event expiry and account cascades.
+Shared browser component tests exercise contributor and moderator flows and
+evergreen/date presentation. Physical-device cookie behavior and published
+multi-artifact routing still require the separate release/device checks.

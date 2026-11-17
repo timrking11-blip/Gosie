@@ -209,6 +209,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 5.2.0(vite@7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2))
+      '@workspace/community':
+        specifier: workspace:*
+        version: link:../../lib/community
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -540,6 +543,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 5.2.0(vite@7.3.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2))
+      '@workspace/community':
+        specifier: workspace:*
+        version: link:../../lib/community
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -624,6 +630,15 @@ importers:
       react:
         specifier: ^19.2.0
         version: 19.3.0
+
+  lib/community:
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
 
 packages:
 

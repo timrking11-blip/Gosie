@@ -553,3 +553,119 @@ test('imports preserve owned carry-over links and never reference existing users
   });
   assert.equal(mismatch.status, 400);
 });
+
+test('Communities enforce grants, privacy, moderation, expiry, and owner attribution', async (t) => {
+  const reader = await makeUser(primary.port);
+  const contributor = await makeUser(primary.port);
+  const owner = await makeUser(primary.port);
+  const moderator = await makeUser(primary.port);
+  const auth = (user) => ({ cookie: user.cookie, csrf: user.csrf });
+  const get = (route, user) => call(primary.port, 'GET', route, user ? auth(user) : {});
+  const post = (route, body, user = contributor) => call(primary.port, 'POST', route, { ...auth(user), body });
+  const future = new Date(Date.now() + 86400000 * 3);
+  const draft = {
+    kind: 'event', title: 'Synthetic community event', description: 'Synthetic automated test, not a real listing.',
+    location: 'Fictional test neighborhood', attribution: 'Synthetic contributor', sourceUrl: 'https://example.invalid/event',
+    startsAt: future.toISOString(), endsAt: new Date(future.getTime() + 3600000).toISOString(),
+  };
+  let item, gem, comment, rejected;
+  const moderate = (type, id, decision = 'approved', user = moderator) =>
+    post(`/community/moderation/${type}/${id}`, { decision }, user);
+  await t.test('unassigned users cannot submit, self-grant, or enter moderator queue', async () => {
+    assert.equal((await post('/community/items', draft, reader)).status, 403);
+    assert.equal((await post('/community/roles', { role: 'moderator' }, reader)).status, 404);
+    assert.equal((await get('/community/moderation', reader)).status, 403);
+    assert.equal((await get('/community/mine', reader)).json.roles.length, 0);
+    assert.equal((await post('/community/items', draft, { ...reader, csrf: 'wrong' })).status, 403);
+    assert.equal((await call(primary.port, 'POST', '/community/items', { body: draft })).status, 401);
+    await testPool.query("INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,'contributor'),($2,'moderator')", [contributor.id, moderator.id]);
+    await testPool.query("INSERT INTO gosie_community_roles (user_id,role,restaurant_name) VALUES ($1,'restaurant-owner','Synthetic restaurant')", [owner.id]);
+    assert.equal((await post('/community/items', { ...draft, status: 'approved', role: 'moderator' })).status, 400);
+  });
+  await t.test('new items are private pending, including from another contributor', async () => {
+    const result = await post('/community/items', draft);
+    assert.equal(result.status, 201);
+    item = result.json.item;
+    assert.equal(item.status, 'pending');
+    assert.equal((await get('/community/mine', contributor)).json.items.some((row) => row.id === item.id), true);
+    assert.equal((await get('/community/mine', owner)).json.items.some((row) => row.id === item.id), false);
+    assert.equal((await get('/community/items')).json.items.some((row) => row.id === item.id), false);
+    assert.equal((await get(`/community/items/${item.id}`, owner)).status, 404);
+    assert.equal((await get('/community/moderation', moderator)).json.items.some((row) => row.id === item.id), true);
+    assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'No private comments allowed' }, owner)).status, 404);
+  });
+  await t.test('moderators approve others, not themselves; stale transitions fail', async () => {
+    await testPool.query("INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,'moderator')", [contributor.id]);
+    assert.equal((await moderate('items', item.id, 'approved', contributor)).status, 403);
+    assert.equal((await moderate('items', item.id)).status, 200);
+    assert.equal((await moderate('items', item.id, 'rejected')).status, 409);
+    const publicItem = (await get('/community/items')).json.items.find((row) => row.id === item.id);
+    assert.equal(publicItem.attribution, draft.attribution);
+    assert.ok(publicItem.reviewedAt);
+    assert.equal('user_id' in publicItem, false);
+    assert.equal(publicItem.expired, false);
+    assert.match(publicItem.why, /contributor-supplied/);
+  });
+  await t.test('only designated owners comment and comments stay private until separately approved', async () => {
+    assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'Not an owner' }, reader)).status, 403);
+    assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'Forged', attribution: 'Fake restaurant' }, owner)).status, 400);
+    const result = await post(`/community/items/${item.id}/comments`, { text: 'Synthetic special event note' }, owner);
+    assert.equal(result.status, 201);
+    comment = result.json.comment;
+    assert.equal(comment.attribution, 'Synthetic restaurant');
+    assert.equal((await get('/community/items')).json.items.find((row) => row.id === item.id).comments.length, 0);
+    assert.equal((await get('/community/mine', reader)).json.comments.some((row) => row.id === comment.id), false);
+    assert.equal((await get('/community/mine', owner)).json.comments.some((row) => row.id === comment.id), true);
+    assert.equal((await moderate('comments', comment.id)).status, 200);
+    assert.equal((await get('/community/items')).json.items.find((row) => row.id === item.id).comments[0].id, comment.id);
+  });
+  await t.test('evergreen gems have no schedule and reject dates, invalid events and unsafe links', async () => {
+    for (const bad of [
+      { ...draft, endsAt: draft.startsAt },
+      { ...draft, startsAt: '2030-02-30T10:00:00Z' },
+      { ...draft, startsAt: '2030-12-01T10:00' },
+      { ...draft, sourceUrl: 'javascript:alert(1)' },
+      { ...draft, sourceUrl: 'https://user:password@example.invalid/' },
+      { ...draft, kind: 'gem' },
+    ]) assert.equal((await post('/community/items', bad)).status, 400);
+    const result = await post('/community/items', { ...draft, kind: 'gem', startsAt: null, endsAt: null });
+    assert.equal(result.status, 201);
+    gem = result.json.item;
+    assert.equal((await moderate('items', gem.id)).status, 200);
+    const publishedGem = (await get('/community/items')).json.items.find((row) => row.id === gem.id);
+    assert.equal(publishedGem.startsAt, null);
+    assert.equal(publishedGem.endsAt, null);
+    assert.match(publishedGem.why, /not a scheduled event/);
+    assert.equal((await post(`/community/items/${gem.id}/comments`, { text: 'Not an event' }, owner)).status, 404);
+  });
+  await t.test('rejected submissions and comments remain private and never enter public reads', async () => {
+    rejected = (await post('/community/items', { ...draft, title: 'Rejected synthetic submission' })).json.item;
+    assert.equal((await moderate('items', rejected.id, 'rejected')).status, 200);
+    const pendingComment = (await post(`/community/items/${item.id}/comments`, { text: 'Rejected synthetic note' }, owner)).json.comment;
+    assert.equal((await moderate('comments', pendingComment.id, 'rejected')).status, 200);
+    const publicFeed = (await get('/community/items?includeExpired=true')).json.items;
+    assert.equal(publicFeed.some((row) => row.id === rejected.id), false);
+    assert.equal(publicFeed.find((row) => row.id === item.id).comments.some((row) => row.id === pendingComment.id), false);
+    assert.equal((await get('/community/mine', contributor)).json.items.find((row) => row.id === rejected.id).status, 'rejected');
+    assert.equal((await get('/community/mine', reader)).json.items.some((row) => row.id === rejected.id), false);
+  });
+  await t.test('expired events are omitted by default, explicitly labeled in archive and cannot receive new notes', async () => {
+    await testPool.query("UPDATE gosie_community_items SET starts_at=NOW()-INTERVAL '2 hours',ends_at=NOW()-INTERVAL '1 hour' WHERE id=$1", [item.id]);
+    assert.equal((await get('/community/items')).json.items.some((row) => row.id === item.id), false);
+    const archived = (await get('/community/items?includeExpired=true')).json.items.find((row) => row.id === item.id);
+    assert.equal(archived.expired, true);
+    assert.equal(archived.comments[0].id, comment.id);
+    assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'Too late' }, owner)).status, 404);
+    const pendingExpired = (await post('/community/items', draft)).json.item;
+    await testPool.query("UPDATE gosie_community_items SET starts_at=NOW()-INTERVAL '2 hours',ends_at=NOW()-INTERVAL '1 hour' WHERE id=$1", [pendingExpired.id]);
+    assert.equal((await moderate('items', pendingExpired.id)).status, 409);
+    assert.equal((await moderate('items', pendingExpired.id, 'rejected')).status, 200);
+  });
+  await t.test('community records and grants follow account deletion', async () => {
+    assert.equal((await call(primary.port, 'DELETE', '/auth/account', { ...auth(contributor), body: {} })).status, 200);
+    for (const table of ['gosie_community_roles', 'gosie_community_items', 'gosie_community_comments']) {
+      assert.equal((await testPool.query(`SELECT COUNT(*)::int AS count FROM ${table} WHERE user_id=$1`, [contributor.id])).rows[0].count, 0);
+    }
+    assert.equal((await get('/community/items?includeExpired=true')).json.items.some((row) => row.id === gem.id || row.id === item.id), false);
+  });
+});

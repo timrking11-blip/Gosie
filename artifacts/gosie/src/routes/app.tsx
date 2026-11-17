@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine, ArrowUpFromLine, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight,
   CircleHelp, Clock3, Compass, FilePlus2, Heart, LoaderCircle, MapPin, Pencil, Plus, Settings2,
@@ -15,6 +15,8 @@ import type { Profile, ProfileConfig, ProfileExport, SocialContext, WeekItem, We
 import { ProductShell, PageHeading, Notice } from "@/components/product/ProductShell";
 import { groupPlans, localDate } from "@/lib/planning";
 import * as Dialog from "@radix-ui/react-dialog";
+const CommunityPanel = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityPanel })));
+const CommunityDiscoveries = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityDiscoveries })));
 
 export const Route = createFileRoute("/app")({ component: AppPage });
 
@@ -63,7 +65,7 @@ function Dashboard({ email }: { email: string }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const initialView = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("view");
-  const [view, setView] = useState<"week" | "weekend" | "settings">(initialView === "weekend" || initialView === "settings" ? initialView : "week");
+  const [view, setView] = useState<"week" | "weekend" | "community" | "settings">(initialView === "weekend" || initialView === "settings" || initialView === "community" ? initialView : "week");
   const [profileId, setProfileId] = useState("");
   const [weekStart, setWeekStart] = useState(weekDate());
   const [sampleItemIds, setSampleItemIds] = useState<string[]>([]);
@@ -91,12 +93,12 @@ function Dashboard({ email }: { email: string }) {
   const [notice, setNotice] = useState("");
   useEffect(() => {
     const searchView = new URLSearchParams(loc.searchStr).get("view");
-    setView(searchView === "weekend" || searchView === "settings" ? searchView : "week");
+    setView(searchView === "weekend" || searchView === "settings" || searchView === "community" ? searchView : "week");
   }, [loc.searchStr]);
   useEffect(() => {
     if (!profileId && profiles.length) setProfileId(profiles[0].id);
   }, [profiles, profileId]);
-  function changeView(next: "week" | "weekend" | "settings") {
+  function changeView(next: "week" | "weekend" | "community" | "settings") {
     setView(next);
     navigate({ to: "/app", search: next === "week" ? {} : { view: next } as never, replace: true });
   }
@@ -146,7 +148,7 @@ function Dashboard({ email }: { email: string }) {
         <button type="button" className="text-button" onClick={() => setProfileEditor(true)}><Plus size={16} /> New profile</button>
       </div>
       {notice && <div className="inline-notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Dismiss message"><X size={15} /></button></div>}
-      {!activeProfile ? <EmptyProfiles demos={demosQuery.data || []} onCopy={async (id, title) => {
+      {view === "community" ? <Suspense fallback={<p role="status">Loading Communities…</p>}><CommunityPanel /></Suspense> : !activeProfile ? <EmptyProfiles demos={demosQuery.data || []} onCopy={async (id, title) => {
         try {
           const copied = await copyProfile.mutateAsync({ demoId: id, title });
           setProfileId(copied.id);
@@ -237,6 +239,7 @@ function WeekView({ profile, data, loading, error, weekStart, setWeekStart, grou
         <div className="plan-list">{groupItems.map((item) => <PlanCard key={item.id} item={item} sample={fictionalProfile || sampleItemIds.includes(item.id)} profileId={profile.id} weekStart={weekStart} onEdit={() => onEdit(item)} />)}</div>
       </section>)}</div>}
     <div className="week-note"><CircleHelp size={15} /><span>Only plans you add or import appear here. Gosie isn't connected to your calendar.</span></div>
+    <Suspense fallback={<p role="status">Loading community discoveries…</p>}><CommunityDiscoveries weekStart={weekStart} communityHref="/app?view=community" /></Suspense>
   </section>;
 }
 

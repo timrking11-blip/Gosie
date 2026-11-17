@@ -1,17 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Compass, LogOut, Settings2, Sparkles } from "lucide-react";
+import { ArrowUpRight, Compass, LogOut, Settings2, Sparkles, Users } from "lucide-react";
 import { GooseMark, Wordmark } from "@/components/gosie/Logo";
 import type { ReactNode } from "react";
 
 export function ProductShell({ children, active = "week", email, onSignOut }: {
   children: ReactNode;
-  active?: "week" | "weekend" | "settings";
+  active?: "week" | "weekend" | "community" | "settings";
   email?: string;
   onSignOut?: () => void;
 }) {
   const links = [
     { label: "Week Ahead", icon: Compass, key: "week" },
     { label: "Weekend Ahead", icon: Sparkles, key: "weekend" },
+    { label: "Communities", icon: Users, key: "community" },
     { label: "My preferences", icon: Settings2, key: "settings" },
   ] as const;
   return <div className="product-shell">
@@ -36,7 +37,7 @@ export function ProductShell({ children, active = "week", email, onSignOut }: {
     <main className="product-main">{children}</main>
     <nav className="product-bottom-nav" aria-label="Planning sections">
       {links.map(({ label, icon: Icon, key }) => <Link key={key} to="/app" search={{ view: key === "week" ? undefined : key } as never} aria-current={active === key ? "page" : undefined} className={active === key ? "is-active" : ""}>
-        <Icon size={19} /><span>{label === "My preferences" ? "Profile" : label.replace(" Ahead", "")}</span>
+        <Icon size={19} /><span>{label === "My preferences" ? "Profile" : label === "Communities" ? "Community" : label.replace(" Ahead", "")}</span>
       </Link>)}
     </nav>
     <a className="product-back-home" href="/"><span>About Gosie</span><ArrowUpRight size={14} /></a>

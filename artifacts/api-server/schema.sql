@@ -74,3 +74,45 @@ CREATE INDEX IF NOT EXISTS gosie_sessions_user_idx ON gosie_sessions(user_id);
 CREATE INDEX IF NOT EXISTS gosie_profiles_user_idx ON gosie_profiles(user_id);
 CREATE INDEX IF NOT EXISTS gosie_feedback_profile_idx ON gosie_feedback(user_id, profile_id);
 CREATE INDEX IF NOT EXISTS gosie_week_items_profile_day_idx ON gosie_week_items(user_id, profile_id, day);
+
+-- Roles are operator-assigned; there is deliberately no HTTP self-enrollment
+-- or role-management endpoint. No role means approved-feed access only.
+CREATE TABLE IF NOT EXISTS gosie_community_roles (
+  user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('contributor','restaurant-owner','moderator')),
+  restaurant_name TEXT,
+  PRIMARY KEY (user_id, role),
+  CHECK (role <> 'restaurant-owner' OR (restaurant_name IS NOT NULL AND length(trim(restaurant_name)) BETWEEN 1 AND 80))
+);
+CREATE TABLE IF NOT EXISTS gosie_community_items (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('event','gem')),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  location TEXT NOT NULL,
+  attribution TEXT NOT NULL,
+  source_url TEXT,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  CHECK ((kind='gem' AND starts_at IS NULL AND ends_at IS NULL)
+    OR (kind='event' AND starts_at IS NOT NULL AND ends_at IS NOT NULL AND ends_at>starts_at))
+);
+CREATE TABLE IF NOT EXISTS gosie_community_comments (
+  id TEXT PRIMARY KEY,
+  item_id TEXT NOT NULL REFERENCES gosie_community_items(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  attribution TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS gosie_community_items_feed_idx ON gosie_community_items(status, ends_at);
+CREATE INDEX IF NOT EXISTS gosie_community_items_owner_idx ON gosie_community_items(user_id);
+CREATE INDEX IF NOT EXISTS gosie_community_comments_item_idx ON gosie_community_comments(item_id, status);

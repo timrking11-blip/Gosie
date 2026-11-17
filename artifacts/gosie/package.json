@@ -12,6 +12,7 @@
     "test:dev-server": "node --test dev-server-access.test.cjs"
   },
   "devDependencies": {
+    "@workspace/community": "workspace:*",
     "@tanstack/router-plugin": "^1.169.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.4",
