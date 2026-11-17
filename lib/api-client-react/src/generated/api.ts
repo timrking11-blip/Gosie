@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+export type * from "./api.schemas";
 import type {
   ApiError,
   FeedbackAction,
@@ -83,6 +84,7 @@ export function useLogin() {
       return result;
     },
     onSuccess: (result) => {
+      queryClient.clear();
       queryClient.setQueryData(getSessionQueryKey(), {
         authenticated: true,
         user: result.user,
@@ -98,7 +100,7 @@ export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiRequest<{ status: string }>("/auth/logout", { method: "POST", body: {} }),
-    onSettled: () => {
+    onSuccess: () => {
       setApiCsrfToken(undefined);
       queryClient.clear();
     },
@@ -109,7 +111,7 @@ export function useDeleteAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiRequest<{ status: string }>("/auth/account", { method: "DELETE", body: {} }),
-    onSettled: () => {
+    onSuccess: () => {
       setApiCsrfToken(undefined);
       queryClient.clear();
     },
@@ -135,7 +137,9 @@ export function useCreateProfile() {
   return useMutation({
     mutationFn: (input: { title: string; config: ProfileConfig }) =>
       apiRequest<{ id: string; title: string; config: ProfileConfig }>("/profiles", { method: "POST", body: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: getProfilesQueryKey() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getProfilesQueryKey() });
+    },
   });
 }
 
@@ -156,7 +160,13 @@ export function useUpdateProfile() {
         method: "PUT",
         body: { title: input.title, config: input.config },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: getProfilesQueryKey() }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getProfilesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: ["gosie", "week"] }),
+        queryClient.invalidateQueries({ queryKey: ["gosie", "weekend"] }),
+      ]);
+    },
   });
 }
 

@@ -56,6 +56,7 @@ export interface WeekItem {
   domain: "professional" | "personal";
   priority: "High" | "Medium" | "Low";
   completed: boolean;
+  sourceType?: "user-entered" | "fictional-demo";
   carriedFromId?: string | null;
   createdAt?: string;
 }
@@ -111,7 +112,7 @@ export interface ProfileExport {
   schemaVersion: "1.0.0-draft";
   title: string;
   config: ProfileConfig;
-  weekItems: Omit<WeekItem, "id" | "createdAt">[];
+  weekItems: WeekItem[];
   feedback: FeedbackItem[];
 }
 

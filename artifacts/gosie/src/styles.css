@@ -381,3 +381,26 @@
   .idea-status { font-size: 7px; padding: 3px 5px; }.idea-category { font-size: 8px; }.save-idea, .dismiss-idea { min-height: 30px; padding: 0 6px; font-size: 7px; }.rating-row span { margin-right: 1px; }
   .week-controls .today-link { padding-left: 0; }.form-row { gap: 8px; }
 }
+
+/* Operational controls must remain readable and usable, including at phone widths. */
+.product-shell button, .product-shell select, .product-modal button, .product-modal select, .auth-page button { min-height: 44px; }
+.product-shell :where(button, select, input, textarea, summary):focus-visible, .product-modal :where(button, input, select):focus-visible, .auth-page :where(button, input):focus-visible { outline: 3px solid var(--color-forest, #17382b); outline-offset: 3px; }
+.product-shell :where(.idea-facts, .idea-status, .idea-category, .save-idea, .dismiss-idea, .rating-row, .rating-row span, .rating-row button, .fiction-tag, .plan-meta, .plan-time, .plan-priority, .sample-label, .form-help) { font-size: 12px; }
+.product-shell :where(.idea-actions, .idea-facts, .rating-row) { flex-wrap: wrap; }
+.product-shell .rating-row button { min-width: 44px; }
+.product-shell :where(h2, h3, .idea-category) { overflow-wrap: anywhere; }
+.settings-field textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid var(--p-line); border-radius: 9px; background: var(--p-card); font: inherit; }
+.product-shell .segmented button, .product-shell .social-chips button { font-size: 12px; }
+.product-shell .week-summary span:not(.summary-icon), .product-shell .week-note, .product-shell .weekend-footnote, .product-shell .product-bottom-nav a, .product-shell .idea-explanation, .product-modal label, .auth-page .consent-box p, .auth-page .auth-footnote, .auth-page .auth-legal { font-size: 12px; }
+.settings-toggle { min-height: 44px; }
+.settings-toggle input { z-index: 1; top: 0; width: 44px; height: 44px; }
+.settings-toggle i { pointer-events: none; }
+.settings-toggle:has(input:focus-visible) i, .check-chips label:has(input:focus-visible) span { outline: 3px solid #17382b; outline-offset: 3px; }
+@media (max-width: 767px) {
+  .product-shell .section-controls .product-primary { margin-top: 0; align-self: flex-start; }
+  .product-shell .idea-card { display: block; }
+  .product-shell .idea-art { height: 80px; min-height: 0; }
+  .product-shell .idea-card-body { padding: 16px; }
+  .product-shell .idea-card h2 { font-size: 22px; }
+  .product-shell :where(input, select, textarea), .product-modal :where(input, select), .auth-page input { font-size: 16px !important; }
+}

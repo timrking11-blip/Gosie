@@ -19,7 +19,7 @@ export function ProductShell({ children, active = "week", email, onSignOut }: {
       <Link to="/" className="product-brand" aria-label="Gosie home"><Wordmark tone="forest" /></Link>
       <p className="product-rail-label">YOUR SPACE</p>
       <nav aria-label="Your planning">
-        {links.map(({ label, icon: Icon, key }) => <Link key={key} to="/app" search={{ view: key === "week" ? undefined : key } as never} className={`product-nav ${active === key ? "is-active" : ""}`}>
+        {links.map(({ label, icon: Icon, key }) => <Link key={key} to="/app" search={{ view: key === "week" ? undefined : key } as never} aria-current={active === key ? "page" : undefined} className={`product-nav ${active === key ? "is-active" : ""}`}>
           <Icon size={18} strokeWidth={1.7} /><span>{label}</span>
         </Link>)}
       </nav>
@@ -31,11 +31,11 @@ export function ProductShell({ children, active = "week", email, onSignOut }: {
     </aside>
     <header className="product-mobile-head">
       <Link to="/" aria-label="Gosie home"><Wordmark tone="forest" /></Link>
-      <span className="mobile-avatar"><GooseMark /></span>
+      {onSignOut ? <button className="text-button" type="button" onClick={onSignOut}><LogOut size={17} /> Sign out</button> : <span className="mobile-avatar"><GooseMark /></span>}
     </header>
     <main className="product-main">{children}</main>
     <nav className="product-bottom-nav" aria-label="Planning sections">
-      {links.map(({ label, icon: Icon, key }) => <Link key={key} to="/app" search={{ view: key === "week" ? undefined : key } as never} className={active === key ? "is-active" : ""}>
+      {links.map(({ label, icon: Icon, key }) => <Link key={key} to="/app" search={{ view: key === "week" ? undefined : key } as never} aria-current={active === key ? "page" : undefined} className={active === key ? "is-active" : ""}>
         <Icon size={19} /><span>{label === "My preferences" ? "Profile" : label.replace(" Ahead", "")}</span>
       </Link>)}
     </nav>

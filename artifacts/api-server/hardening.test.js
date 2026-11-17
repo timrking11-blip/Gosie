@@ -1,13 +1,19 @@
-// Postgres-backed API regression tests. Run with a disposable database:
-// GOSIE_DB_ENV=test node artifacts/api-server/apply-schema.js
-// node --test artifacts/api-server/hardening.test.js
+// Explicit opt-in is required. Tests create uniquely named synthetic users and
+// remove their rows even if a request assertion fails. Never run in production.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHmac } = require('node:crypto');
+const { createHash } = require('node:crypto');
+if (process.env.GOSIE_DB_ENV !== 'test' || process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production') {
+  throw new Error('API tests require GOSIE_DB_ENV=test on a non-production database.');
+}
+const { pool: testPool } = require('./db');
+const testRateSecret = randomUUID();
+const registeredIds = new Set();
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -23,6 +29,8 @@ function freePort() {
 function call(port, method, route, options = {}) {
   return new Promise((resolve, reject) => {
     const headers = { 'Content-Type': 'application/json', ...options.headers };
+    const body = options.raw !== undefined ? options.raw : options.body !== undefined ? JSON.stringify(options.body) : undefined;
+    if (body !== undefined) headers['Content-Length'] = Buffer.byteLength(body);
     if (options.cookie) headers.Cookie = options.cookie;
     if (options.csrf) headers['X-CSRF-Token'] = options.csrf;
     const req = http.request({ host: '127.0.0.1', port, path: route, method, headers }, (res) => {
@@ -35,8 +43,7 @@ function call(port, method, route, options = {}) {
       });
     });
     req.on('error', reject);
-    if (options.raw !== undefined) req.write(options.raw);
-    else if (options.body !== undefined) req.write(JSON.stringify(options.body));
+    if (body !== undefined) req.write(body);
     req.end();
   });
 }
@@ -50,6 +57,7 @@ async function start(extraEnv = {}) {
       PORT: String(port),
       AUTH_RATE_LIMIT: '1000',
       PILOT_SIGNUPS_ENABLED: '1',
+      SESSION_SECRET: testRateSecret,
       ...extraEnv,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -88,9 +96,11 @@ const users = [];
 let primary;
 
 async function register(port, email, password = 'Gosie-Test-Pass-123') {
-  return call(port, 'POST', '/auth/register', {
+  const response = await call(port, 'POST', '/auth/register', {
     body: { email, password, pilotConsent: true },
   });
+  if (response.status === 201) registeredIds.add(response.json.id);
+  return response;
 }
 
 async function login(port, email, password = 'Gosie-Test-Pass-123') {
@@ -99,6 +109,7 @@ async function login(port, email, password = 'Gosie-Test-Pass-123') {
   const response = await call(port, 'POST', '/auth/login', { body: { email, password } });
   assert.equal(response.status, 200, `login failed: ${JSON.stringify(response.json)}`);
   const user = {
+    id: response.json.user.id,
     email,
     password,
     cookie: response.headers['set-cookie'][0].split(';')[0],
@@ -148,17 +159,15 @@ before(async () => {
 });
 
 after(async () => {
-  if (primary) {
-    for (const user of users) {
-      try {
-        await call(primary.port, 'DELETE', '/auth/account', {
-          cookie: user.cookie,
-          csrf: user.csrf,
-          body: {},
-        });
-      } catch {}
-    }
+  try {
     await stop(primary);
+    for (const id of registeredIds) await testPool.query('DELETE FROM gosie_users WHERE id=$1', [id]);
+    for (const ip of ['127.0.0.1', '::ffff:127.0.0.1', '198.51.100.81', '198.51.100.82']) {
+      const fingerprint = createHmac('sha256', testRateSecret).update(ip).digest('hex');
+      await testPool.query('DELETE FROM gosie_auth_rate_limits WHERE ip_hash=$1', [fingerprint]);
+    }
+  } finally {
+    await testPool.end();
   }
 });
 
@@ -186,6 +195,25 @@ test('registration is closed unless explicitly enabled and requires consent', as
     body: { email: `consent-${randomUUID()}@example.invalid`, password: 'Gosie-Test-Pass-123' },
   });
   assert.equal(noConsent.status, 400);
+});
+
+test('production enrollment requires an invitation and cannot exceed five accounts', async () => {
+  const emails = Array.from({ length: 5 }, () => `invited-${randomUUID()}@example.invalid`);
+  const server = await start({
+    NODE_ENV: 'production', COOKIE_SECURE: '1',
+    PILOT_INVITED_EMAIL_HASHES: emails.map((email) => createHash('sha256').update(email).digest('hex')).join(','),
+  });
+  try {
+    assert.equal((await register(server.port, `uninvited-${randomUUID()}@example.invalid`)).status, 403);
+    // This test runs before other accounts are created; only its own users are added.
+    for (const email of emails) assert.equal((await register(server.port, email)).status, 201);
+    assert.equal((await register(server.port, emails[0])).json.error, 'pilot_capacity_reached');
+  } finally {
+    await stop(server);
+    for (const email of emails) {
+      await testPool.query('DELETE FROM gosie_users WHERE email=$1 AND id=ANY($2::text[])', [email, [...registeredIds]]);
+    }
+  }
 });
 
 test('email is normalized and duplicate accounts are rejected', async () => {
@@ -291,8 +319,9 @@ test('Week Ahead demo copies five weekdays and grouping changes preserve all eve
     cookie: user.cookie,
   });
   const weekdays = new Set(week.json.items.map((item) => new Date(`${item.day}T00:00:00Z`).getUTCDay()));
-  assert.deepEqual([...weekdays].sort(), [1, 2, 3, 4, 5]);
-  assert.ok(week.json.items.length >= 5);
+  assert.deepEqual([...weekdays].sort(), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(week.json.items.length, 8);
+  assert.ok(week.json.items.every((item) => item.sourceType === 'fictional-demo'));
   const originalIds = week.json.items.map((item) => item.id).sort();
   const updatedConfig = config({ weekGrouping: 'category' });
   const updatedProfile = await call(primary.port, 'PUT', `/profiles/${profile.id}`, {
@@ -440,19 +469,39 @@ test('rate limits are persisted and secure cookies are configurable', async () =
   }
 });
 
-test('user data survives an API process restart and account deletion removes access', async () => {
+test('plans, latest feedback, and sessions survive process restart; deletion cascades', async () => {
   const user = await makeUser(primary.port);
   const profile = await createProfile(primary.port, user);
+  const plan = await call(primary.port, 'POST', `/week?profile_id=${profile.id}`, {
+    cookie: user.cookie, csrf: user.csrf,
+    body: { day: '2026-11-16', title: 'Restart regression plan', category: 'Work' },
+  });
+  assert.equal(plan.status, 201);
+  for (const rating of [1, 5]) {
+    assert.equal((await call(primary.port, 'POST', '/feedback', {
+      cookie: user.cookie, csrf: user.csrf,
+      body: { profileId: profile.id, itemId: 'e1', action: 'rating', rating },
+    })).status, 200);
+  }
+  const beforeRestart = await call(primary.port, 'GET', `/weekend?profile_id=${profile.id}`, { cookie: user.cookie });
   await stop(primary);
   primary = await start();
   const profileAfterRestart = await call(primary.port, 'GET', `/profiles/${profile.id}`, { cookie: user.cookie });
   assert.equal(profileAfterRestart.status, 200);
+  const afterRestart = await call(primary.port, 'GET', `/weekend?profile_id=${profile.id}`, { cookie: user.cookie });
+  assert.deepEqual(afterRestart.json, beforeRestart.json);
+  assert.equal(afterRestart.json.included.find((idea) => idea.id === 'e1').rating, 5);
+  const plans = await call(primary.port, 'GET', `/week?profile_id=${profile.id}&week_start=2026-11-16`, { cookie: user.cookie });
+  assert.equal(plans.json.items[0].id, plan.json.item.id);
   const deleted = await call(primary.port, 'DELETE', '/auth/account', {
     cookie: user.cookie, csrf: user.csrf, body: {},
   });
   assert.equal(deleted.status, 200);
   const afterDelete = await call(primary.port, 'GET', '/profiles', { cookie: user.cookie });
   assert.equal(afterDelete.status, 401);
+  for (const table of ['gosie_profiles', 'gosie_sessions', 'gosie_week_items', 'gosie_feedback']) {
+    assert.equal((await testPool.query(`SELECT COUNT(*)::int AS count FROM ${table} WHERE user_id=$1`, [user.id])).rows[0].count, 0);
+  }
 });
 
 test('logs are structured and do not include credentials or request bodies', async () => {
@@ -468,4 +517,39 @@ test('SIGTERM shuts down the API server cleanly', async () => {
   const server = await start();
   await stop(server);
   assert.equal(server.child.exitCode, 0);
+});
+
+test('imports preserve owned carry-over links and never reference existing users records', async () => {
+  const owner = await makeUser(primary.port);
+  const other = await makeUser(primary.port);
+  const profile = await createProfile(primary.port, owner);
+  const request = { cookie: owner.cookie, csrf: owner.csrf };
+  const original = await call(primary.port, 'POST', `/week?profile_id=${profile.id}`, {
+    ...request, body: { day: '2026-11-16', title: 'Portable plan', category: 'Personal' },
+  });
+  const carried = await call(primary.port, 'POST', `/week/${original.json.item.id}/carry-forward?profile_id=${profile.id}`, {
+    ...request, body: {},
+  });
+  assert.equal(carried.status, 201);
+  const exported = await call(primary.port, 'GET', `/profiles/${profile.id}/export`, request);
+  const imported = await call(primary.port, 'POST', '/profiles/import', {
+    cookie: other.cookie, csrf: other.csrf, body: exported.json,
+  });
+  assert.equal(imported.status, 201);
+  const roundTrip = await call(primary.port, 'GET', `/profiles/${imported.json.id}/export`, { cookie: other.cookie });
+  const [first, next] = roundTrip.json.weekItems;
+  assert.notEqual(first.id, original.json.item.id);
+  assert.equal(next.carriedFromId, first.id);
+  assert.deepEqual(roundTrip.json.config, exported.json.config);
+  const foreign = await call(primary.port, 'POST', '/profiles/import', {
+    cookie: other.cookie, csrf: other.csrf,
+    body: { ...exported.json, weekItems: [{ ...exported.json.weekItems[0], carriedFromId: original.json.item.id }] },
+  });
+  assert.equal(foreign.status, 201);
+  const foreignExport = await call(primary.port, 'GET', `/profiles/${foreign.json.id}/export`, { cookie: other.cookie });
+  assert.equal(foreignExport.json.weekItems[0].carriedFromId, null);
+  const mismatch = await call(primary.port, 'POST', '/profiles/import', {
+    ...request, body: { ...exported.json, schemaVersion: '2.0.0' },
+  });
+  assert.equal(mismatch.status, 400);
 });

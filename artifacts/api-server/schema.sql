@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS gosie_week_items (
   domain TEXT NOT NULL DEFAULT 'personal' CHECK (domain IN ('professional', 'personal')),
   priority TEXT NOT NULL DEFAULT 'Medium' CHECK (priority IN ('High', 'Medium', 'Low')),
   completed BOOLEAN NOT NULL DEFAULT FALSE,
+  source_type TEXT NOT NULL DEFAULT 'user-entered' CHECK (source_type IN ('user-entered', 'fictional-demo')),
   carried_from_id TEXT REFERENCES gosie_week_items(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -65,6 +66,9 @@ CREATE TABLE IF NOT EXISTS gosie_auth_rate_limits (
   window_started_at TIMESTAMPTZ NOT NULL,
   hits INTEGER NOT NULL CHECK (hits >= 0)
 );
+
+ALTER TABLE gosie_week_items ADD COLUMN IF NOT EXISTS source_type TEXT NOT NULL DEFAULT 'user-entered'
+  CHECK (source_type IN ('user-entered', 'fictional-demo'));
 
 CREATE INDEX IF NOT EXISTS gosie_sessions_user_idx ON gosie_sessions(user_id);
 CREATE INDEX IF NOT EXISTS gosie_profiles_user_idx ON gosie_profiles(user_id);

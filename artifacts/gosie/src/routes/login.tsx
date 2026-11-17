@@ -70,7 +70,7 @@ function LoginPage() {
           </div>
           {mode === "register" && <div className="consent-box">
             <label className="consent-label"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} required /> <span>I agree to take part in the Gosie pilot and understand its data notice.</span></label>
-            <p>Gosie stores the plans, preferences and feedback you add so it can show your personal pilot experience. Your information is used for this pilot, is not shared for advertising, and you can delete your account from your profile. Please do not add sensitive personal information.</p>
+            <p>Gosie stores your email, password hash, session, plans, preferences, and feedback for this private pilot. Recommendation listings are fictional, and no calendar or live source is connected. You can export profiles or delete your account in preferences. Pilot data will be deleted after the pilot ends; no end date has been set yet. Please do not add sensitive personal information. Invites remain closed until the privacy and release checks are approved.</p>
           </div>}
           <button type="submit" className="product-primary auth-submit" disabled={mutation.isPending || submitting || (mode === "register" && !consent)}>
             {mutation.isPending || submitting ? "One moment…" : mode === "login" ? "Sign in" : "Create account"} <ArrowRight size={17} />

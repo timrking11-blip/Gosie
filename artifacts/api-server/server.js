@@ -17,6 +17,9 @@ const {
 const MAX_BODY = 1024 * 1024;
 const MAX_PROFILES_PER_USER = 50;
 const PILOT_NOTICE_VERSION = '2026-11-17-v1';
+const INVITED_EMAIL_HASHES = new Set(
+  String(process.env.PILOT_INVITED_EMAIL_HASHES || '').split(',').map((value) => value.trim()).filter((value) => /^[a-f0-9]{64}$/.test(value)),
+);
 const ALLOWED_ORIGINS = new Set(String(process.env.ALLOWED_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean));
 const VALID_GROUPINGS = new Set(['company', 'category', 'chronological']);
 const VALID_DOMAINS = new Set(['professional', 'personal']);
@@ -114,7 +117,18 @@ function configError(config) {
       Object.values(item).every((value) => typeof value === 'number' || (typeof value === 'string' && value.length <= 500)))
   )) return 'customInterests_invalid';
   if ('customSections' in config && (!Array.isArray(config.customSections) || config.customSections.length > 50)) return 'customSections_invalid';
+  if ('homeBase' in config && config.homeBase !== null && (typeof config.homeBase !== 'string' || config.homeBase.length > 200)) return 'homeBase_invalid';
   return null;
+}
+
+function normalizeConfig(config) {
+  return {
+    schemaVersion: '1.0.0-draft', balance: 'balanced', weekGrouping: 'chronological',
+    budgetPerActivity: 50, budgetHard: true, maxTravelMinutes: 30, exceptionTravelMinutes: 30,
+    allowExceptions: false, transportModes: ['walking', 'transit'], homeBase: '',
+    weekendInterests: [], customInterests: [], socialContexts: [], surpriseMe: false,
+    balancedPriorities: [], customSections: [], ...config,
+  };
 }
 
 function validDay(value) {
@@ -134,6 +148,7 @@ function validWeekItem(item, partial = false) {
   if ('domain' in item && !VALID_DOMAINS.has(item.domain)) return false;
   if ('priority' in item && !VALID_PRIORITIES.has(item.priority)) return false;
   if ('completed' in item && typeof item.completed !== 'boolean') return false;
+  if ('sourceType' in item && !['user-entered', 'fictional-demo'].includes(item.sourceType)) return false;
   return true;
 }
 
@@ -163,6 +178,7 @@ function mapWeekItem(row) {
     domain: row.domain,
     priority: row.priority,
     completed: row.completed,
+    sourceType: row.source_type,
     carriedFromId: row.carried_from_id,
     createdAt: row.created_at,
   };
@@ -202,13 +218,13 @@ async function insertWeekItem(client, userId, profileId, item, carriedFromId = n
   const id = `week-${token(12)}`;
   const result = await client.query(
     `INSERT INTO gosie_week_items
-       (id, user_id, profile_id, day, time_label, title, category, company, domain, priority, completed, carried_from_id)
-     VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, $11, $12)
+       (id, user_id, profile_id, day, time_label, title, category, company, domain, priority, completed, carried_from_id, source_type)
+     VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      RETURNING *`,
     [
       id, userId, profileId, item.day, item.timeLabel || null, item.title, item.category,
       item.company || null, item.domain || 'personal', item.priority || 'Medium',
-      item.completed === true, carriedFromId,
+      item.completed === true, carriedFromId, item.sourceType || 'user-entered',
     ],
   );
   return mapWeekItem(result.rows[0]);
@@ -282,17 +298,36 @@ function createApiHandler() {
         const email = body.email.trim().toLowerCase();
         if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'invalid_email' });
         if (body.password.length < 8 || body.password.length > 200) return send(res, 400, { error: 'password_length_invalid' });
+        const productionEnrollment = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
+        if (productionEnrollment && (INVITED_EMAIL_HASHES.size > 5 || !INVITED_EMAIL_HASHES.has(hash(email)))) {
+          return send(res, 403, { error: 'pilot_invitation_required' });
+        }
         const userId = `user-${token(12)}`;
         const password = await hashPassword(body.password);
+        const client = await pool.connect();
         try {
-          await pool.query(
+          await client.query('BEGIN');
+          if (productionEnrollment) {
+            // Serialize the count and insert so simultaneous signups cannot exceed five.
+            await client.query("SELECT pg_advisory_xact_lock(hashtext('gosie-pilot-enrollment'))");
+            const count = await client.query('SELECT COUNT(*)::int AS count FROM gosie_users');
+            if (count.rows[0].count >= 5) {
+              await client.query('ROLLBACK');
+              return send(res, 403, { error: 'pilot_capacity_reached' });
+            }
+          }
+          await client.query(
             `INSERT INTO gosie_users (id, email, pass_hash, pass_salt, pilot_notice_version, consent_at)
              VALUES ($1, $2, $3, $4, $5, NOW())`,
             [userId, email, password.hash, password.salt, PILOT_NOTICE_VERSION],
           );
+          await client.query('COMMIT');
         } catch (error) {
+          await client.query('ROLLBACK');
           if (error.code === '23505') return send(res, 409, { error: 'email_exists' });
           throw error;
+        } finally {
+          client.release();
         }
         return send(res, 201, { id: userId, email });
       }
@@ -364,7 +399,7 @@ function createApiHandler() {
         const error = configError(body.config);
         if (error) return send(res, 400, { error: 'invalid_config', detail: error });
         if (await getProfileCounts(session.user.id) >= MAX_PROFILES_PER_USER) return send(res, 409, { error: 'profile_limit_reached' });
-        const profile = await insertProfile(pool, session.user.id, body.title.trim(), body.config);
+        const profile = await insertProfile(pool, session.user.id, body.title.trim(), normalizeConfig(body.config));
         return send(res, 201, { id: profile.id, title: profile.title, config: profile.config });
       }
       if (req.method === 'POST' && path === '/profiles/copy-demo') {
@@ -390,10 +425,15 @@ function createApiHandler() {
         }
       }
       if (req.method === 'POST' && path === '/profiles/import') {
-        const config = body.config;
-        if (config && !config.schemaVersion) config.schemaVersion = '1.0.0-draft';
+        if (body.schemaVersion !== undefined && body.schemaVersion !== '1.0.0-draft') {
+          return send(res, 400, { error: 'version_mismatch' });
+        }
+        const config = body.config && typeof body.config === 'object' && !Array.isArray(body.config)
+          ? normalizeConfig(body.config) : body.config;
         const configProblem = configError(config);
         if (configProblem) return send(res, 400, { error: 'invalid_config', detail: configProblem });
+        if ('weekItems' in body && !Array.isArray(body.weekItems)) return send(res, 400, { error: 'invalid_week_items' });
+        if ('feedback' in body && !Array.isArray(body.feedback)) return send(res, 400, { error: 'invalid_feedback' });
         const title = typeof body.title === 'string' && body.title.trim() ? body.title.trim().slice(0, 200) : 'Imported profile';
         const weekItems = Array.isArray(body.weekItems) ? body.weekItems : [];
         const feedback = Array.isArray(body.feedback) ? body.feedback : [];
@@ -404,7 +444,22 @@ function createApiHandler() {
         try {
           await client.query('BEGIN');
           const profile = await insertProfile(client, session.user.id, title, config);
-          for (const item of weekItems) await insertWeekItem(client, session.user.id, profile.id, item, item.carriedFromId || null);
+          // Imported references may only point at records created within this import.
+          // Never attach an imported row to an existing (possibly other user's) ID.
+          const importedIds = new Map();
+          const importedItems = [];
+          for (const item of weekItems) {
+            const inserted = await insertWeekItem(client, session.user.id, profile.id, item);
+            if (typeof item.id === 'string') importedIds.set(item.id, inserted.id);
+            importedItems.push({ original: item, inserted });
+          }
+          for (const { original, inserted } of importedItems) {
+            const parent = importedIds.get(original.carriedFromId);
+            if (parent && parent !== inserted.id) {
+              await client.query('UPDATE gosie_week_items SET carried_from_id=$1 WHERE id=$2 AND user_id=$3 AND profile_id=$4',
+                [parent, inserted.id, session.user.id, profile.id]);
+            }
+          }
           for (const item of feedback) {
             await client.query(
               `INSERT INTO gosie_feedback (user_id, profile_id, item_id, action, rating)
@@ -447,7 +502,7 @@ function createApiHandler() {
           const error = configError(body.config);
           if (error) return send(res, 400, { error: 'invalid_config', detail: error });
           await pool.query('UPDATE gosie_profiles SET title = $1, config = $2::jsonb WHERE id = $3 AND user_id = $4', [
-            body.title.trim(), JSON.stringify(body.config), profileId, session.user.id,
+            body.title.trim(), JSON.stringify(normalizeConfig(body.config)), profileId, session.user.id,
           ]);
           return send(res, 200, { id: profileId });
         }
@@ -626,7 +681,7 @@ function createApiHandler() {
   };
 }
 
-function listen(port = Number(process.env.API_PORT || process.env.PORT || 8791), host = '0.0.0.0') {
+function listen(port = Number(process.env.API_PORT || process.env.PORT || 8791), host = '127.0.0.1') {
   const apiHandler = createApiHandler();
   const server = http.createServer(apiHandler);
   server.timeout = 10000;

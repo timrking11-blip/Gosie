@@ -1,6 +1,9 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+// This entrypoint is production-only; do not silently run insecure defaults.
+process.env.NODE_ENV = 'production';
+process.env.COOKIE_SECURE ||= '1';
 const { createApiHandler, pool } = require('./server');
 
 const publicRoot = path.resolve(__dirname, '../gosie/dist/public');
@@ -14,6 +17,7 @@ const mime = new Map([
   ['.jpg', 'image/jpeg'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
+  ['.mp4', 'video/mp4'],
   ['.png', 'image/png'],
   ['.svg', 'image/svg+xml'],
   ['.webp', 'image/webp'],
@@ -69,10 +73,29 @@ async function serveStatic(req, res) {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cache-Control': pathname.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+    'Accept-Ranges': 'bytes',
   };
+  if (req.headers.range) {
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+    let start = range?.[1] ? Number(range[1]) : 0;
+    let end = range?.[2] ? Number(range[2]) : stat.size - 1;
+    if (range && !range[1] && range[2]) {
+      start = Math.max(0, stat.size - Number(range[2]));
+      end = stat.size - 1;
+    }
+    if (!range || (!range[1] && !range[2]) || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start > end || start >= stat.size) {
+      res.writeHead(416, { ...headers, 'Content-Range': `bytes */${stat.size}` });
+      return res.end();
+    }
+    end = Math.min(end, stat.size - 1);
+    res.writeHead(206, { ...headers, 'Content-Length': end - start + 1, 'Content-Range': `bytes ${start}-${end}/${stat.size}` });
+    if (req.method === 'HEAD') return res.end();
+    return fs.createReadStream(filePath, { start, end }).on('error', () => res.destroy()).pipe(res);
+  }
+  headers['Content-Length'] = stat.size;
   res.writeHead(200, headers);
   if (req.method === 'HEAD') return res.end();
-  fs.createReadStream(filePath).pipe(res);
+  fs.createReadStream(filePath).on('error', () => res.destroy()).pipe(res);
 }
 
 async function main() {

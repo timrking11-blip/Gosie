@@ -1,5 +1,12 @@
 # Gosie roadmap: promo site → configurable Week Ahead product
 
+> Current implementation addendum (17 November 2026):
+> [`planning-pilot-status.md`](planning-pilot-status.md) records the subsequent
+> web/Postgres pilot work and its unverified release gates. The dated assessment
+> below is historical, not a description of the current worktree or proof of
+> deployment. B3 parity, B4/calendar, live connectors, and publication are not
+> approved by this addendum.
+
 Assessed 2026-11-05. Sources read: this repo; Muse export packages in `Desktop\Gosie App` (Week-Ahead Dashboard HTML export, Personal Intelligence Template contents incl. Phase 2 closeout, Gate 1G/B1/B2 reports and `pit-b1` code, Gate 1C package); published preview URL (headers only). `Gosie-website-source.zip` was never found; brand assets in `gosie_brand_assets/` were used. Existing assessment: `docs/mvp-readiness.md` (not repeated).
 
 ## Two different things called "the dashboard"

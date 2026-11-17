@@ -6,7 +6,7 @@ const target = process.env.GOSIE_DB_ENV;
 if (!['development', 'test'].includes(target)) {
   throw new Error('Set GOSIE_DB_ENV=development or GOSIE_DB_ENV=test; production schema is managed by Replit Publish.');
 }
-if (process.env.REPLIT_ENVIRONMENT === 'production') {
+if (process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production') {
   throw new Error('Refusing to apply schema from a production runtime.');
 }
 if (!process.env.DATABASE_URL) {

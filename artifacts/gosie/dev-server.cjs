@@ -6,11 +6,10 @@ const env = {
   ...process.env,
   API_PORT: apiPort,
   NODE_ENV: 'development',
-  PILOT_SIGNUPS_ENABLED: '1',
 };
 const apiPath = path.resolve(__dirname, '../api-server/server.js');
 const api = spawn(process.execPath, [apiPath], { env, stdio: 'inherit' });
-const vitePath = require.resolve('vite/bin/vite.js');
+const vitePath = path.join(path.dirname(require.resolve('vite/package.json')), 'bin/vite.js');
 const vite = spawn(process.execPath, [vitePath, '--config', path.join(__dirname, 'vite.config.ts')], { env, stdio: 'inherit' });
 let stopping = false;
 

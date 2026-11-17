@@ -13,13 +13,15 @@ import {
 } from "@workspace/api-client-react";
 import type { Profile, ProfileConfig, ProfileExport, SocialContext, WeekItem, WeekendIdea } from "../../../../lib/api-client-react/src/generated/api.schemas";
 import { ProductShell, PageHeading, Notice } from "@/components/product/ProductShell";
+import { groupPlans, localDate } from "@/lib/planning";
+import * as Dialog from "@radix-ui/react-dialog";
 
 export const Route = createFileRoute("/app")({ component: AppPage });
 
 const freshConfig: ProfileConfig = {
   schemaVersion: "1.0.0-draft", balance: "balanced", weekGrouping: "chronological",
   budgetPerActivity: 60, budgetHard: false, maxTravelMinutes: 45, exceptionTravelMinutes: 75,
-  allowExceptions: true, transportModes: ["walking", "public transit"], homeBase: "",
+  allowExceptions: true, transportModes: ["walking", "transit"], homeBase: "",
   weekendInterests: [], customInterests: [], socialContexts: ["solo", "friends", "date", "group", "family"],
   surpriseMe: false, balancedPriorities: [], customSections: [],
 };
@@ -27,19 +29,18 @@ const socialOptions: { value: SocialContext; label: string }[] = [
   { value: "all", label: "Any company" }, { value: "solo", label: "Just me" }, { value: "friends", label: "Friends" },
   { value: "date", label: "A date" }, { value: "group", label: "A group" }, { value: "family", label: "Family" },
 ];
-const interestOptions = ["Arts & culture", "Food & drink", "Outdoors", "Live music", "Learning", "Wellbeing", "Local places"];
-const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const interestOptions = ["Arts, museums, and theater", "Restaurants and food", "Outdoors", "Live music", "Learning and workshops", "Hidden gems"];
 
 function weekDate(date = new Date()) {
   const monday = new Date(date);
   const day = (monday.getDay() + 6) % 7;
   monday.setDate(monday.getDate() - day);
-  return monday.toISOString().slice(0, 10);
+  return localDate(monday);
 }
 function shiftWeek(start: string, amount: number) {
   const date = new Date(`${start}T12:00:00`);
   date.setDate(date.getDate() + amount * 7);
-  return date.toISOString().slice(0, 10);
+  return localDate(date);
 }
 function shortWeek(start: string) {
   const d = new Date(`${start}T12:00:00`);
@@ -116,16 +117,21 @@ function Dashboard({ email }: { email: string }) {
     try {
       const parsed = JSON.parse(await file.text()) as ProfileExport;
       if (parsed.schemaVersion !== "1.0.0-draft" || !parsed.config || !parsed.title) throw new Error("This file isn't a Gosie profile export.");
-      await importProfile.mutateAsync(parsed);
+      const imported = await importProfile.mutateAsync(parsed);
+      setProfileId(imported.id);
       setNotice("Profile imported.");
     } catch (error) { setNotice(error instanceof Error ? error.message : "That file could not be imported."); }
   }
   async function makeProfile(title: string, config: ProfileConfig) {
-    await createProfile.mutateAsync({ title, config });
+    const profile = await createProfile.mutateAsync({ title, config });
+    setProfileId(profile.id);
     setProfileEditor(false);
     setNotice("Your profile is ready.");
   }
-  const onSignOut = async () => { await logout.mutateAsync(); navigate({ to: "/login" }); };
+  const onSignOut = async () => {
+    try { await logout.mutateAsync(); navigate({ to: "/login" }); }
+    catch { setNotice("Sign-out could not be completed. Please try again."); }
+  };
   if (profilesQuery.isLoading) return <div className="product-loading"><div className="loading-mark" /><div className="loading-line" /><div className="loading-line short" /></div>;
   if (profilesQuery.isError) return <ProductShell email={email}><div className="product-content"><Notice tone="error">We couldn't load your profiles. {profilesQuery.error.message}</Notice><button className="product-primary" onClick={() => profilesQuery.refetch()}>Retry</button></div></ProductShell>;
   return <ProductShell email={email} active={view} onSignOut={onSignOut}>
@@ -202,15 +208,7 @@ function WeekView({ profile, data, loading, error, weekStart, setWeekStart, grou
     await updateProfile.mutateAsync({ id: profile.id, title: profile.title, config: { ...profile.config, weekGrouping: next } });
   };
   const items = data?.items || [];
-  const grouped = useMemo(() => {
-    if (grouping === "category") return items.reduce<Record<string, WeekItem[]>>((acc, item) => { (acc[item.category || "Other"] ||= []).push(item); return acc; }, {});
-    if (grouping === "company") return items.reduce<Record<string, WeekItem[]>>((acc, item) => { (acc[item.company || "Personal"] ||= []).push(item); return acc; }, {});
-    return dayNames.reduce<Record<string, WeekItem[]>>((acc, day) => {
-      const dayItems = items.filter((item) => item.day.toLowerCase().startsWith(day.toLowerCase().slice(0, 3)));
-      if (dayItems.length) acc[day] = dayItems;
-      return acc;
-    }, {});
-  }, [grouping, items]);
+  const grouped = useMemo(() => groupPlans(items, grouping), [grouping, items]);
   const done = items.filter((item) => item.completed).length;
   return <section>
     <PageHeading eyebrow="YOUR WEEK · A LITTLE MORE IN VIEW" title="Week Ahead">
@@ -231,6 +229,7 @@ function WeekView({ profile, data, loading, error, weekStart, setWeekStart, grou
       </div>
       <button className="product-primary compact" type="button" onClick={onAdd}><Plus size={16} /> Add a plan</button>
     </div>
+    {updateProfile.isError && <Notice tone="error">Grouping could not be saved. Try again.</Notice>}
     {loading ? <SkeletonCards /> : error ? <div className="panel-error"><Notice tone="error">Your week couldn't load. {error}</Notice><button className="secondary-button" onClick={onRetry}>Retry</button></div> :
       items.length === 0 ? <div className="week-empty"><div className="empty-orbit small"><CalendarDays size={22} /></div><h2>A little open space.</h2><p>Add a plan you want to remember, or bring in an optional fictional sample week to see the layout.</p><div className="empty-actions"><button className="product-primary compact" onClick={onAdd}><Plus size={16} /> Add a plan</button><button className="secondary-button" disabled={copyDemoWeekPending} onClick={onCopySample}>{copyDemoWeekPending ? "Adding…" : "Copy fictional sample week"}</button></div></div> :
       <div className={`week-grid grouping-${grouping}`}>{Object.entries(grouped).map(([group, groupItems]) => <section className="day-column" key={group}>
@@ -245,7 +244,7 @@ function PlanCard({ item, sample, profileId, weekStart, onEdit }: { item: WeekIt
   const update = useUpdateWeekItem();
   const remove = useDeleteWeekItem();
   const carry = useCarryForwardWeekItem();
-  const isSample = sample || item.title.toLowerCase().includes("sample") || item.id.toLowerCase().includes("demo");
+  const isSample = item.sourceType === "fictional-demo" || sample;
   return <article className={`plan-card ${item.completed ? "plan-complete" : ""}`}>
     <div className={`plan-domain domain-${item.domain}`} aria-hidden="true" />
     <div className="plan-card-main">
@@ -261,6 +260,7 @@ function PlanCard({ item, sample, profileId, weekStart, onEdit }: { item: WeekIt
       <button type="button" aria-label={`Carry ${item.title} forward`} title="Carry forward" className="icon-button" onClick={() => carry.mutate({ profileId, weekStart, itemId: item.id })}><ArrowDownToLine size={15} /></button>
       <button type="button" aria-label={`Delete ${item.title}`} className="icon-button danger-icon" onClick={() => { if (window.confirm(`Delete “${item.title}”?`)) remove.mutate({ profileId, weekStart, itemId: item.id }); }}><Trash2 size={15} /></button>
     </div>
+    {(update.isError || remove.isError || carry.isError) && <p role="alert">This change could not be saved. Please try again.</p>}
   </article>;
 }
 
@@ -270,18 +270,13 @@ function PlanDialog({ item, profileId, weekStart, onClose, onSaved }: { item: We
   const create = useCreateWeekItem();
   const update = useUpdateWeekItem();
   const [title, setTitle] = useState(item?.title || "");
-  const [day, setDay] = useState(item?.day || "Monday");
+  const [day, setDay] = useState(item?.day || weekStart);
   const [timeLabel, setTime] = useState(item?.timeLabel || "");
   const [category, setCategory] = useState(item?.category || "Personal");
   const [company, setCompany] = useState(item?.company || "");
   const [domain, setDomain] = useState<WeekItem["domain"]>(item?.domain || "personal");
   const [priority, setPriority] = useState<WeekItem["priority"]>(item?.priority || "Medium");
   const [error, setError] = useState("");
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     try {
@@ -292,19 +287,19 @@ function PlanDialog({ item, profileId, weekStart, onClose, onSaved }: { item: We
     } catch (e) { setError(e instanceof Error ? e.message : "The plan couldn't be saved."); }
   }
   const busy = create.isPending || update.isPending;
-  return <div className="product-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <section className="product-modal" role="dialog" aria-modal="true" aria-labelledby="plan-dialog-title">
-      <div className="modal-head"><div><p className="product-eyebrow">{item ? "MAKE A CHANGE" : "ADD SOMETHING TO YOUR WEEK"}</p><h2 id="plan-dialog-title">{item ? "Edit this plan" : "A plan to remember"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19} /></button></div>
+  return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal><Dialog.Overlay className="product-modal-backdrop">
+    <Dialog.Content className="product-modal" aria-describedby={undefined}>
+      <div className="modal-head"><div><p className="product-eyebrow">{item ? "MAKE A CHANGE" : "ADD SOMETHING TO YOUR WEEK"}</p><Dialog.Title asChild><h2>{item ? "Edit this plan" : "A plan to remember"}</h2></Dialog.Title></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19} /></button></div>
       {error && <Notice tone="error">{error}</Notice>}
       <form className="product-form" onSubmit={submit}>
         <label htmlFor="plan-title">What's the plan?</label><input id="plan-title" autoFocus required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <div className="form-row"><div><label htmlFor="plan-day">Day</label><select id="plan-day" value={day} onChange={(e) => setDay(e.target.value)}>{dayNames.map((d) => <option key={d}>{d}</option>)}</select></div><div><label htmlFor="plan-time">Time</label><input id="plan-time" value={timeLabel} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 9:30 am" /></div></div>
+        <div className="form-row"><div><label htmlFor="plan-day">Date</label><input id="plan-day" type="date" required value={day} onChange={(e) => setDay(e.target.value)} /></div><div><label htmlFor="plan-time">Time</label><input id="plan-time" type="time" value={timeLabel} onChange={(e) => setTime(e.target.value)} /></div></div>
         <div className="form-row"><div><label htmlFor="plan-kind">Kind</label><input id="plan-kind" value={category} onChange={(e) => setCategory(e.target.value)} required /></div><div><label htmlFor="plan-priority">Priority</label><select id="plan-priority" value={priority} onChange={(e) => setPriority(e.target.value as WeekItem["priority"])}><option>High</option><option>Medium</option><option>Low</option></select></div></div>
         <div className="form-row"><div><label htmlFor="plan-domain">For</label><select id="plan-domain" value={domain} onChange={(e) => setDomain(e.target.value as WeekItem["domain"])}><option value="personal">Personal</option><option value="professional">Work</option></select></div><div><label htmlFor="plan-company">Company or project</label><input id="plan-company" value={company} onChange={(e) => setCompany(e.target.value)} /></div></div>
         <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="product-primary compact" type="submit" disabled={busy}>{busy ? "Saving…" : item ? "Save changes" : "Add to week"}</button></div>
       </form>
-    </section>
-  </div>;
+    </Dialog.Content>
+  </Dialog.Overlay></Dialog.Portal></Dialog.Root>;
 }
 
 function WeekendView({ profile, data, loading, error, feedback, onRetry, onFeedback, onManage }: {
@@ -323,7 +318,7 @@ function WeekendView({ profile, data, loading, error, feedback, onRetry, onFeedb
   const errorText = social === "all" ? error : weekend.isError ? weekend.error.message : "";
   return <section className="weekend-page">
     <PageHeading eyebrow="YOUR WEEKEND · ROOM TO WANDER" title="Weekend Ahead">
-      Suggestions shaped around what you enjoy. Each idea comes with a plain-language reason, so you can decide for yourself.
+      Fictional sample ideas ranked using this profile's interests, limits, and feedback. Listings, prices, and travel times are illustrative—not live or verified.
     </PageHeading>
     <div className="weekend-intro">
       <div className="weekend-intro-mark"><Sparkles size={20} /></div><div><strong>Make it your kind of weekend.</strong><span>Adjust interests and limits in your profile preferences.</span></div>
@@ -339,7 +334,16 @@ function WeekendView({ profile, data, loading, error, feedback, onRetry, onFeedb
             try { await onFeedback(idea, action, rating, value); setMessage(action === "saved" ? (value ? "Saved for later." : "Removed from saved ideas.") : action === "dismissed" ? "We'll leave this one out." : "Thanks — your rating has been recorded."); }
             catch (e) { setMessage(e instanceof Error ? e.message : "Feedback could not be saved."); }
           }} />)}</div>}
-    <p className="weekend-footnote"><CircleHelp size={15} /> Suggestions are based on the Gosie pilot's available recommendation data. Explanations show the reasons supplied for each idea.</p>
+    {!isLoading && !errorText && (["excluded", "dismissed"] as const).map((status) => <details key={status} className="demo-shelf">
+      <summary>{status === "excluded" ? "Outside your limits" : "Dismissed ideas"} ({response?.[status].length || 0})</summary>
+      <div className="idea-grid">{(response?.[status] || []).map((idea) => <WeekendCard key={idea.id} idea={idea}
+        isOpen={openWhy === idea.id} onToggle={() => setOpenWhy(openWhy === idea.id ? null : idea.id)}
+        existingFeedback={feedback.filter((f) => f.itemId === idea.id)} onFeedback={async (action, rating, value) => {
+          try { await onFeedback(idea, action, rating, value); setMessage("Feedback updated for this profile."); }
+          catch (e) { setMessage(e instanceof Error ? e.message : "Feedback could not be saved."); }
+        }} />)}</div>
+    </details>)}
+    <p className="weekend-footnote"><CircleHelp size={15} /> Fictional data only. Social context changes ranking, never hard limits. Saved ideas and your latest rating affect this profile's order; this is not learned personalization.</p>
   </section>;
 }
 
@@ -356,7 +360,7 @@ function WeekendCard({ idea, isOpen, onToggle, onFeedback, existingFeedback }: {
       {isOpen && <div className="idea-explanation"><strong>What stood out</strong><ul>{(idea.why.length ? idea.why : ["A match with the preferences in this profile."]).map((reason) => <li key={reason}>{reason}</li>)}</ul>{idea.excludeReasons.length > 0 && <p className="exclude-reason">A note: {idea.excludeReasons.join(" · ")}</p>}</div>}
       <div className="idea-actions">
         <button type="button" className={`save-idea ${saved ? "saved" : ""}`} aria-pressed={saved} onClick={() => onFeedback("saved", undefined, !saved)}><Heart size={16} fill={saved ? "currentColor" : "none"} />{saved ? "Saved" : "Save idea"}</button>
-        <button type="button" className="dismiss-idea" onClick={() => onFeedback("dismissed")}>Not for me</button>
+        <button type="button" className="dismiss-idea" onClick={() => onFeedback("dismissed", undefined, idea.status !== "dismissed")}>{idea.status === "dismissed" ? "Restore idea" : "Not for me"}</button>
       </div>
       <div className="rating-row"><span>How does this feel?</span>{[1, 2, 3, 4, 5].map((star) => <button type="button" key={star} className={Number(rating) >= star ? "rated" : ""} aria-label={`Rate ${star} out of 5`} aria-pressed={Number(rating) === star} onClick={() => onFeedback("rating", star)}>{star}</button>)}</div>
       {idea.sourceType === "fictional-demo" && <p className="fiction-tag">Fictional sample recommendation</p>}
@@ -406,10 +410,11 @@ function SettingsView({ profile, onSave, onDelete, onExport, onImport, onDeleteA
         <div className="settings-field"><label htmlFor="travel">Usual travel limit <span>{config.maxTravelMinutes} min</span></label><input id="travel" type="range" min={0} max={180} step={5} value={config.maxTravelMinutes} onChange={(e) => set("maxTravelMinutes", Number(e.target.value))} /></div>
         <Toggle label="Allow an occasional farther-away idea" checked={config.allowExceptions} onChange={(v) => set("allowExceptions", v)} />
         {config.allowExceptions && <div className="settings-field"><label htmlFor="exceptionTravel">Farther-away limit <span>{config.exceptionTravelMinutes} min</span></label><input id="exceptionTravel" type="range" min={config.maxTravelMinutes} max={240} step={5} value={config.exceptionTravelMinutes} onChange={(e) => set("exceptionTravelMinutes", Number(e.target.value))} /></div>}
-        <fieldset className="settings-field"><legend>Getting around</legend><div className="check-chips">{["walking", "public transit", "cycling", "driving"].map((mode) => <label key={mode}><input type="checkbox" checked={config.transportModes.includes(mode)} onChange={() => toggleString("transportModes", mode)} /><span>{mode}</span></label>)}</div></fieldset>
+        <fieldset className="settings-field"><legend>Getting around</legend><div className="check-chips">{["walking", "transit", "cycling", "driving"].map((mode) => <label key={mode}><input type="checkbox" checked={config.transportModes.includes(mode)} onChange={() => toggleString("transportModes", mode)} /><span>{mode === "transit" ? "public transit" : mode}</span></label>)}</div></fieldset>
         <fieldset className="settings-field"><legend>Interests to explore</legend><div className="check-chips interest-chips">{interestOptions.map((interest) => <label key={interest}><input type="checkbox" checked={config.weekendInterests.includes(interest)} onChange={() => toggleString("weekendInterests", interest)} /><span>{interest}</span></label>)}</div></fieldset>
+        <div className="settings-field"><label htmlFor="custom-interests">Custom interests, one per line</label><textarea id="custom-interests" value={config.customInterests.map((interest) => interest.label).join("\n")} maxLength={5000} onChange={(e) => set("customInterests", e.target.value.split("\n").slice(0, 50).map((label, index) => ({ ...config.customInterests[index], label: label.slice(0, 200), specificInterest: label.slice(0, 200) })))} /><p className="form-help">These are simple keyword matches against fictional examples, not live discovery.</p></div>
         <fieldset className="settings-field"><legend>Good company for recommendations</legend><div className="check-chips">{socialOptions.filter((item) => item.value !== "all").map((item) => <label key={item.value}><input type="checkbox" checked={config.socialContexts.includes(item.value)} onChange={() => toggleString("socialContexts", item.value)} /><span>{item.label}</span></label>)}</div></fieldset>
-        <Toggle label="Surprise me with a little variety" checked={config.surpriseMe} onChange={(v) => set("surpriseMe", v)} />
+        <p className="form-help">Home base, balance, social preferences, and any imported variety setting are stored for portability only. Ranking currently uses interests, transport, budget, travel limits, your current social lens, and explicit feedback. Home base does not calculate travel.</p>
       </section>
       <div className="settings-save-row"><button type="submit" className="product-primary" disabled={saving}>{saving ? "Saving…" : "Save preferences"}</button></div>
     </form>
@@ -430,19 +435,14 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function ProfileCreateDialog({ onClose, onCreate, busy }: { onClose: () => void; onCreate: (title: string, config: ProfileConfig) => void; busy: boolean }) {
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try { await onCreate(title.trim(), freshConfig); } catch (err) { setError(err instanceof Error ? err.message : "Profile couldn't be created."); }
   }
-  return <div className="product-modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <section className="product-modal" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title">
-      <div className="modal-head"><div><p className="product-eyebrow">A SPACE OF YOUR OWN</p><h2 id="profile-dialog-title">Create a profile</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19} /></button></div>
+  return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}><Dialog.Portal><Dialog.Overlay className="product-modal-backdrop">
+    <Dialog.Content className="product-modal" aria-describedby={undefined}>
+      <div className="modal-head"><div><p className="product-eyebrow">A SPACE OF YOUR OWN</p><Dialog.Title asChild><h2>Create a profile</h2></Dialog.Title></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19} /></button></div>
       {error && <Notice tone="error">{error}</Notice>}<form className="product-form" onSubmit={submit}><label htmlFor="new-profile-title">What should we call it?</label><input id="new-profile-title" autoFocus required maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. My week" /><p className="form-help">Start with balanced defaults. You can change your preferences at any time.</p><div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="product-primary compact" disabled={busy}>{busy ? "Creating…" : "Create profile"}</button></div></form>
-    </section>
-  </div>;
+    </Dialog.Content>
+  </Dialog.Overlay></Dialog.Portal></Dialog.Root>;
 }

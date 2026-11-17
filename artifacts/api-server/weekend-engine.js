@@ -67,7 +67,7 @@ function rankWeekend(config, feedbackRows, socialInput = 'all') {
       'Fictional example only. Listing, price, availability, and travel time are not verified.',
     ];
     const matchedCustom = (config.customInterests || []).filter((interest) => customMatch(idea, interest));
-    const matchedInterest = idea.interests.some((interest) => interests.has(normalizeInterest(interest)));
+    const matchedInterest = [idea.category, ...idea.interests].some((interest) => interests.has(normalizeInterest(interest)));
     if (matchedInterest) why.push(`Matches a selected interest: ${idea.interests.join(', ')}.`);
     else why.push('No selected-interest match; soft preference only, not an exclusion.');
     if (matchedCustom.length) why.push(`Matches sample interest: ${matchedCustom.map((interest) => interest.label || 'custom interest').join(', ')}.`);

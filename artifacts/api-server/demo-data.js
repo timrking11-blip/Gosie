@@ -111,7 +111,7 @@ function currentWeekStart(now = new Date()) {
 }
 
 function makeDemoWeek(weekStart = currentWeekStart()) {
-  return demoWeek.map((item) => ({ ...item, day: addDays(weekStart, item.offset) }));
+  return demoWeek.map((item) => ({ ...item, day: addDays(weekStart, item.offset), sourceType: 'fictional-demo' }));
 }
 
 module.exports = { demoProfiles, makeDemoWeek, currentWeekStart, addDays };
