@@ -6,10 +6,11 @@ this documentation refresh does not change any application screen.
 
 ## Current adoption status
 
-Week Ahead already imports `tokens.css` from its `src/index.css`. The extraction
-is therefore not wholly unapplied. This refresh leaves that shared token file,
-all application files, and existing imports unchanged. Approval is required
-before making any further screen changes.
+Week Ahead imports `tokens.css` from its `src/index.css`. Following explicit
+approval, the system was applied to Week Ahead with readable semantic colors,
+larger supporting text, wrapping layouts, and persistent demo disclosures.
+See `docs/extraction-notes.md` for the application details. Marketing, mobile,
+and pilot screens are outside this approval.
 
 ## Contents
 

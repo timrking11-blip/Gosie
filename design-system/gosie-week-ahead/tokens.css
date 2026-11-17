@@ -56,6 +56,20 @@
   --gosie-transition-fast: 200ms;
   --gosie-transition-progress: 250ms;
   --gosie-shadow-card: 0 8px 24px #2b1b1208;
+
+  /* Additive text roles: dark text on light surfaces; light text on dark panels. */
+  --gosie-text-accent: #7a5233;      /* readable bronze for small labels */
+  --gosie-text-quiet: #5c655f;       /* replaces subtle grey for real text */
+  --gosie-text-done: #626b64;        /* completed checklist text */
+  --gosie-text-on-dark: #f5f0e5e0;   /* supporting copy on espresso/forest */
+  --gosie-text-on-dark-quiet: #f5f0e5c4;
+  --gosie-focus-color-on-dark: var(--gosie-peach);
+
+  /* Readable type floor */
+  --gosie-text-xs: 12px;   /* minimum for essential metadata */
+  --gosie-text-sm: 13px;
+  --gosie-text-body: 14px;
+  --gosie-tap-target: 44px;
 }
 
 @media (prefers-reduced-motion: reduce) {

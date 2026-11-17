@@ -14,8 +14,9 @@ redesign or a claim about the private consumer application. Sources inspected:
 - `design-system/gosie-week-ahead/tokens.css`: existing shared tokens.
 - `artifacts/gosie-week-ahead/public/brand/gosie-mark.svg`: existing emblem.
 
-The app already imports this package's tokens. No token or screen changes are
-part of this refresh. The standalone HTML specimen uses system font fallbacks
+The app already imported this package's tokens before the reference refresh.
+The subsequent user-approved application added readable semantic roles and
+updated Week Ahead's stylesheet (see below). The standalone HTML specimen uses system font fallbacks
 unless Fraunces and Manrope are installed locally; it makes no external font
 requests. It is a static visual reference, not a functioning product screen.
 
@@ -38,10 +39,11 @@ requests. It is a static visual reference, not a functioning product screen.
 | Transition tokens | 200ms control, 250ms progress |
 
 The source heading uses `clamp(46px, 7vw, 78px)` with tight line height.
-Body text starts at 14px. Source controls and metadata include 8–12px sizes;
-these are observations, **not recommended minimum sizes** for new UI.
+Body text originally started at 14px. Before the approved application, source
+controls and metadata included 8–12px sizes. These historical observations are
+**not recommended minimum sizes** for new UI.
 
-## Responsive behavior observed in CSS
+## Responsive behavior before application
 
 - Above 900px: two-column content with a wider schedule, maximum page width
   1180px.
@@ -52,7 +54,7 @@ these are observations, **not recommended minimum sizes** for new UI.
   label and section note are hidden.
 - At 370px and below: tighter header, day marker, and event-row spacing.
 
-These rules describe the existing CSS, not verified device behavior. Future
+These rules describe the pre-application CSS, not verified device behavior. Future
 application should retain essential disclosures at every size, allow text to
 wrap, and avoid reproducing hidden essential information or tiny labels.
 
@@ -75,9 +77,27 @@ screen-reader output require separate testing when applying the system.
 Preserve `aria-pressed` for selected buttons, `aria-expanded` for disclosures,
 native checkboxes, visible focus, and reduced-motion support.
 
-## Application boundary
+## Approved Week Ahead application
 
-Pending user approval: any further token changes, screen restyling, responsive
-corrections, accessibility fixes, font loading changes, or component migration.
+The user approved application to Week Ahead only. The stylesheet now uses:
+
+- Readable small-label accent `#7A5233`: **5.99:1 on cream**.
+- Quiet text `#5C655F`: **5.60:1 on surface**.
+- Completed-item text `#626B64`: **5.12:1 on surface**.
+- Peach focus on dark panels: **6.72:1 against forest**.
+- A 12px metadata floor and 13–15px supporting/body text rather than 8–11px.
+- Wrapping navigation, headings, titles and footer; all summary cells and demo
+  disclosures remain displayed at every breakpoint.
+- Three summary statistics below a full-width lead at tablet widths, stacking
+  at 370px and below. Narrow event rows stack time above the title.
+
+Brand artwork, base palette, fonts, sample content, routes and demo logic were
+preserved. New text roles supplement—not replace—the decorative bronze and sage.
+This is not a claim of a full accessibility audit or live interaction testing.
+
+## Further application boundary
+
+Marketing, mobile, and operational pilot screens were outside this approval.
+Further design changes beyond this Week Ahead application require approval.
 Keep illustrative events, fixed context ranking, sample budget/travel labels,
 and browser-local checklist state clearly distinguished from live capabilities.
