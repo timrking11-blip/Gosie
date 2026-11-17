@@ -12,6 +12,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { CommunityPanel, CommunityDiscoveries } from '@workspace/community/panel';
+import PersonalPlans from './components/PersonalPlans';
 
 type Weekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 type EventCategory = 'Work' | 'Wellbeing' | 'Home' | 'Social';
@@ -218,7 +219,7 @@ function EventSchedule() {
   return (
     <section className="surface-card" aria-labelledby="schedule-heading">
       <div className="section-title-row">
-        <div><span className="section-kicker">The week ahead</span><h2 className="section-title" id="schedule-heading">Your week, at a glance</h2></div>
+        <div><span className="section-kicker">Illustrative sample</span><h2 className="section-title" id="schedule-heading">A fictional week, at a glance</h2></div>
         <div className="view-switch" aria-label="Event grouping">
           <button type="button" aria-pressed={view === 'chronological'} onClick={() => setView('chronological')}>By day</button>
           <button type="button" aria-pressed={view === 'category'} onClick={() => setView('category')}>By kind</button>
@@ -276,10 +277,11 @@ function WeekAheadPage() {
         <div className="intro">
           <span className="eyebrow">A little help for everything ahead</span>
           <h1>Make space for <em>your week.</em></h1>
-          <p className="intro-copy">A thoughtful view of what’s coming, plus a few small anchors to make the days feel more manageable. Everything here is fictional sample content—not your calendar.</p>
+          <p className="intro-copy">A thoughtful view of what’s coming, plus a few small anchors to make the days feel more manageable. The sample week below is fictional. Plans you add stay in this browser; Gosie is not connected to your calendar.</p>
           <DemoBadge />
         </div>
         <Summary />
+        <PersonalPlans />
         <div className="content-grid">
           <EventSchedule />
           <aside className="aside-column" aria-label="Planning notes">

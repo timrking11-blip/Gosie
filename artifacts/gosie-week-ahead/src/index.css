@@ -209,6 +209,53 @@ a { color: inherit; }
 .action-item.is-done .action-text span { color: var(--gosie-text-done); }
 .local-note { display: flex; gap: 8px; margin: 0 18px 18px; padding: 11px; border-radius: 10px; background: #e7eadf; color: #485549; font-size: 13px; line-height: 1.5; }
 .local-note svg { flex: 0 0 auto; margin-top: 1px; color: var(--forest); }
+.personal-plans { margin: 24px 0; padding: clamp(16px, 3vw, 24px); }
+.personal-plans-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.personal-plans-intro { max-width: 62ch; margin: 8px 0 0; color: var(--gosie-text-muted); font-size: 14px; line-height: 1.6; }
+.personal-plan-primary, .personal-plan-secondary {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px;
+  border: 1px solid var(--forest); border-radius: var(--gosie-radius-control); background: var(--forest); color: var(--cream);
+  font: inherit; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.personal-plan-primary:disabled { opacity: .55; cursor: not-allowed; }
+.personal-plan-secondary { background: transparent; color: var(--forest); }
+.personal-plan-privacy { display: flex; align-items: flex-start; gap: 10px; margin: 16px 0; padding: 12px 14px; border-radius: 12px; background: #e7eadf; color: #485549; font-size: 13px; line-height: 1.55; }
+.personal-plan-privacy svg { flex: 0 0 auto; margin-top: 1px; color: var(--forest); }
+.personal-plan-message { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 12px 0; padding: 11px 13px; border-radius: 11px; background: #e7eadf; color: #34463b; font-size: 13px; line-height: 1.5; }
+.personal-plan-message.is-error { background: #f9e8e3; color: #7e3325; }
+.personal-plan-message button { min-width: 40px; min-height: 40px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-weight: 750; text-decoration: underline; cursor: pointer; }
+.personal-week-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 15px 0; }
+.personal-week-nav > button, .personal-plan-form-heading button {
+  width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--forest); cursor: pointer;
+}
+.personal-week-nav > span { flex: 1 1 220px; color: var(--espresso); font: 500 19px/1.25 var(--app-font-serif); }
+.personal-week-nav label { margin-left: auto; color: var(--gosie-text-muted); font-size: 13px; font-weight: 700; }
+.personal-week-nav input, .personal-plan-form input, .personal-plan-form select, .personal-plan-form textarea {
+  width: 100%; min-width: 0; min-height: 44px; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--gosie-surface-control); color: var(--ink); font: inherit; font-size: 16px;
+}
+.personal-week-nav input { width: auto; }
+.personal-plan-form { display: grid; gap: 14px; margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--gosie-surface-day); }
+.personal-plan-form-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.personal-plan-form-heading h3 { margin: 0; color: var(--espresso); font: 500 22px/1.2 var(--app-font-serif); }
+.personal-plan-form label { display: grid; gap: 6px; color: var(--gosie-text-muted); font-size: 13px; font-weight: 750; }
+.personal-plan-form textarea { resize: vertical; }
+.personal-plan-form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.personal-plan-form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.personal-plan-empty { margin: 12px 0 2px; color: var(--gosie-text-muted); font-size: 14px; line-height: 1.6; }
+.personal-plan-list { margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.personal-plan-row { display: grid; grid-template-columns: minmax(105px, .45fr) minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 15px 2px; border-bottom: 1px solid var(--gosie-line-soft); }
+.personal-plan-date { display: grid; gap: 4px; color: var(--gosie-text-muted); font-size: 13px; }
+.personal-plan-date strong { color: var(--forest); font-size: 14px; }
+.personal-plan-copy { min-width: 0; }
+.personal-plan-copy h3 { margin: 0; overflow-wrap: anywhere; color: var(--espresso); font: 500 20px/1.2 var(--app-font-serif); }
+.personal-plan-copy > span { display: inline-block; margin-top: 5px; color: var(--gosie-text-accent); font-size: 12px; font-weight: 800; }
+.personal-plan-copy p { margin: 5px 0 0; color: var(--gosie-text-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.personal-plan-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.personal-plan-row-actions button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; border: 0; border-radius: 9px; background: transparent; color: var(--forest); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.personal-plan-row-actions button:last-child { color: #7e3325; }
+.personal-plans button:focus-visible, .personal-plans input:focus-visible, .personal-plans select:focus-visible, .personal-plans textarea:focus-visible { outline: 3px solid var(--bronze); outline-offset: 2px; }
 .weekend-teaser { padding: 20px; background: var(--forest); color: var(--cream); }
 .weekend-teaser .section-kicker { color: var(--peach); }
 .weekend-teaser h2 { margin: 7px 0 8px; font: 500 25px/1.1 var(--app-font-serif); }
@@ -309,6 +356,17 @@ a { color: inherit; }
   .action-head { padding: 17px; }
   .action-list { padding: 0 15px 12px; }
   .local-note { margin: 0 15px 15px; }
+  .personal-plans-heading { flex-direction: column; }
+  .personal-plans-heading .personal-plan-primary { align-self: flex-start; }
+  .personal-week-nav > span { flex-basis: calc(100% - 108px); }
+  .personal-week-nav label { margin-left: 0; flex-basis: 100%; }
+  .personal-week-nav input { flex: 1 1 100%; }
+  .personal-plan-form-row { grid-template-columns: 1fr; }
+  .personal-plan-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .personal-plan-date { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: wrap; gap: 7px; }
+  .personal-plan-copy { grid-column: 1; }
+  .personal-plan-row-actions { grid-column: 2; grid-row: 2; }
+  .personal-plan-row-actions button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .outing-intro { display: block; }
   .outing-intro h2 { font-size: 42px; }
   .weekend-note { margin-top: 15px; }
