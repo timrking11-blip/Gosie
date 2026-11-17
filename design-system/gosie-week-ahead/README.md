@@ -2,13 +2,22 @@
 
 An extracted, reusable reference for the visual language already present in the
 Gosie Week Ahead web preview. This package documents the current implementation;
-it does not change or automatically theme any application screen.
+this documentation refresh does not change any application screen.
+
+## Current adoption status
+
+Week Ahead already imports `tokens.css` from its `src/index.css`. The extraction
+is therefore not wholly unapplied. This refresh leaves that shared token file,
+all application files, and existing imports unchanged. Approval is required
+before making any further screen changes.
 
 ## Contents
 
 - `tokens.css` — reusable color, typography, shape, focus, and motion tokens.
 - `docs/AGENTS.md` — instructions for using this system in future UI work.
 - `docs/components.md` — component patterns observed in the current app.
+- `docs/extraction-notes.md` — current-source evidence, responsive rules, and
+  accessibility caveats; distinguishes existing values from future guidance.
 - `preview.html` — a self-contained visual reference.
 
 ## Source of truth
@@ -27,5 +36,6 @@ than silently altered.
 
 ## Apply only with approval
 
-This package is standalone. Do not import its tokens into the Gosie Week Ahead,
-marketing, or mobile screens unless the user asks to apply the design system.
+Do not add imports, change shared tokens, or restyle the Week Ahead, marketing,
+or mobile screens unless the user asks to apply the design system. The existing
+Week Ahead import is left as found.

@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/api-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node production-server.js",
+    "test": "node --test hardening.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}
