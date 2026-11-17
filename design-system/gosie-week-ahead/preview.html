@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gosie Week Ahead design system extracted from the current illustrative web preview.">
+  <title>Gosie Week Ahead — Design System</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --forest: #17382b;
+      --sage: #99b6a5;
+      --cream: #f5f0e5;
+      --peach: #ebaf86;
+      --ink: #0a1016;
+      --midnight: #0f141d;
+      --espresso: #2b1b12;
+      --gold: #d5ac7c;
+      --bronze: #946640;
+      --surface: #faf6ef;
+      --line: #d8d7c9;
+      --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+      --ui: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+      --radius: 18px;
+      --focus: 3px solid var(--bronze);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--cream);
+      color: var(--ink);
+      font: 15px/1.55 var(--ui);
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible {
+      outline: var(--focus);
+      outline-offset: 3px;
+    }
+    .topbar {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px clamp(18px, 5vw, 72px);
+      background: var(--espresso);
+      color: var(--cream);
+    }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .mark { width: 42px; height: 42px; flex: none; }
+    .wordmark { font: 500 29px/1 var(--display); letter-spacing: -.05em; }
+    .wordmark i { color: var(--peach); font-style: normal; }
+    .top-label {
+      padding: 8px 12px;
+      border: 1px solid rgb(245 240 229 / 24%);
+      border-radius: 999px;
+      color: rgb(245 240 229 / 82%);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    main { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 44px 0 72px; }
+    .eyebrow { color: var(--bronze); font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin: 9px 0 12px; color: var(--espresso); font: 500 clamp(42px, 7vw, 70px)/1 var(--display); letter-spacing: -.055em; }
+    h1 em { color: var(--forest); font-weight: 400; }
+    .lead { max-width: 660px; color: #59635e; }
+    .disclosure { display: inline-flex; align-items: center; gap: 8px; margin: 8px 0 30px; padding: 8px 12px; border: 1px solid #94664055; border-radius: 999px; background: #f7e8d7; color: var(--forest); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .section { margin-top: 30px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .section h2 { margin: 4px 0 0; color: var(--espresso); font: 500 29px/1.12 var(--display); }
+    .source { color: #70796f; font-size: 11px; }
+    .palette { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .swatch { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .swatch-color { height: 74px; background: var(--swatch); }
+    .swatch-meta { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px 11px; }
+    .swatch-meta strong { color: var(--espresso); font-size: 12px; }
+    .swatch-meta code { color: #667069; font: 11px var(--mono, monospace); }
+    .pair { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 8px 24px rgb(43 27 18 / 3%); }
+    .type-panel { padding: 24px; }
+    .type-display { margin: 10px 0 11px; color: var(--espresso); font: 500 clamp(35px, 5vw, 54px)/1.03 var(--display); letter-spacing: -.045em; }
+    .type-display em { color: var(--forest); }
+    .type-ui { max-width: 640px; color: #59635e; }
+    .type-meta { padding-top: 13px; border-top: 1px solid var(--line); color: var(--bronze); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .dark-panel { padding: 23px; background: var(--espresso); color: var(--cream); }
+    .dark-panel h3 { margin-bottom: 8px; font: 500 24px/1.15 var(--display); }
+    .dark-panel p { color: rgb(245 240 229 / 78%); font-size: 13px; }
+    .button-row, .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+    .button { min-height: 40px; padding: 0 16px; border: 1px solid var(--forest); border-radius: 999px; background: var(--forest); color: var(--cream); font-size: 12px; font-weight: 800; }
+    .button.secondary { border-color: #f5f0e54d; background: transparent; color: var(--cream); }
+    .chip { min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: #59635e; font-size: 12px; font-weight: 700; }
+    .chip[aria-pressed="true"] { border-color: var(--peach); background: var(--peach); color: var(--espresso); }
+    .components { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .event-card { padding: 18px; }
+    .card-kicker { color: var(--bronze); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .event-day { display: flex; align-items: start; gap: 14px; margin-top: 12px; }
+    .day-mark { width: 56px; min-height: 61px; display: grid; align-content: center; justify-items: center; border-radius: 12px; background: #e9e8dc; color: var(--forest); font-weight: 800; }
+    .day-mark strong { font: 500 25px/1 var(--display); }
+    .event-card h3 { margin: 0 0 4px; color: var(--espresso); font: 500 22px/1.15 var(--display); }
+    .event-card p { margin: 0; color: #687169; font-size: 12px; }
+    .outing-card { padding: 19px; border-radius: var(--radius); background: var(--espresso); color: var(--cream); }
+    .outing-card h3 { margin: 10px 0 5px; color: var(--cream); font: 500 25px/1.12 var(--display); }
+    .outing-card p { color: rgb(245 240 229 / 76%); font-size: 12px; }
+    .why { display: flex; width: 100%; justify-content: space-between; padding: 12px 0 0; border: 0; border-top: 1px solid rgb(245 240 229 / 20%); background: transparent; color: var(--peach); text-align: left; font-weight: 800; }
+    .states { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .state { padding: 17px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .state b { display: block; margin-bottom: 5px; color: var(--forest); font: 500 19px/1.1 var(--display); }
+    .state p { margin: 0; color: #59635e; font-size: 11px; }
+    .focus-demo { padding: 18px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .focus-demo button { min-height: 42px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--forest); color: var(--cream); font-weight: 800; }
+    .focus-demo button:focus { outline: var(--focus); outline-offset: 3px; }
+    .note { margin-top: 16px; padding: 15px 17px; border-left: 4px solid var(--gold); border-radius: 0 12px 12px 0; background: #e8e8da; color: var(--forest); font-size: 12px; }
+    footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line); color: #737b73; font-size: 11px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 30px, 620px); padding-top: 32px; }
+      .palette { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .pair, .components { grid-template-columns: 1fr; }
+      .states { grid-template-columns: 1fr; }
+      .topbar { padding-inline: 16px; }
+      .source { max-width: 45%; text-align: right; }
+      footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="32" fill="#18372F"/>
+        <path d="M22 52c-1-9 6-13 8-20 1.6-5.5-3-7.5-3-13 0-5 3.6-8.5 8-8.5 4 0 7 2.7 7.4 6.3-1.5 1.9-4 2.8-6.6 2.8-.6 4.4 3.8 8.6 3.8 15.4 0 7.5-6 12.5-17.6 17Z" fill="#F5F0E6"/>
+        <path d="M42.2 15.6l7.6 1.8-7.6 2.4c.4-1.4.4-2.8 0-4.2Z" fill="#EDAD87"/>
+        <circle cx="37.2" cy="15.2" r="1.3" fill="#18372F"/>
+      </svg>
+      <span class="wordmark">gosie<i>.</i></span>
+    </div>
+    <span class="top-label">Extracted design system</span>
+  </header>
+  <main>
+    <span class="eyebrow">Gosie Week Ahead · visual foundation</span>
+    <h1>A little help for <em>everything ahead.</em></h1>
+    <p class="lead">A practical reference extracted from the current Gosie Week Ahead preview: the colors, type, components, and interaction rules already in the code.</p>
+    <span class="disclosure">Reference only · not applied to screens</span>
+
+    <section class="section">
+      <div class="section-head"><div><span class="eyebrow">01 · color</span><h2>A warm, grounded palette</h2></div><span class="source">Values from the current UI stylesheet</span></div>
+      <div class="palette">
+        <div class="swatch"><div class="swatch-color" style="--swatch:#17382b"></div><div class="swatch-meta"><strong>Forest</strong><code>#17382B</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#99b6a5"></div><div class="swatch-meta"><strong>Sage</strong><code>#99B6A5</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#f5f0e5"></div><div class="swatch-meta"><strong>Cream</strong><code>#F5F0E5</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#ebaf86"></div><div class="swatch-meta"><strong>Peach</strong><code>#EBAF86</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#0a1016"></div><div class="swatch-meta"><strong>Ink</strong><code>#0A1016</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#0f141d"></div><div class="swatch-meta"><strong>Midnight</strong><code>#0F141D</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#2b1b12"></div><div class="swatch-meta"><strong>Espresso</strong><code>#2B1B12</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#d5ac7c"></div><div class="swatch-meta"><strong>Gold</strong><code>#D5AC7C</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#946640"></div><div class="swatch-meta"><strong>Bronze</strong><code>#946640</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#faf6ef"></div><div class="swatch-meta"><strong>Surface</strong><code>#FAF6EF</code></div></div>
+        <div class="swatch"><div class="swatch-color" style="--swatch:#d8d7c9"></div><div class="swatch-meta"><strong>Line</strong><code>#D8D7C9</code></div></div>
+      </div>
+      <div class="note">The Gosie SVG artwork still embeds the original forest, cream, and peach values (#18372F, #F5F0E6, #EDAD87). This extraction records that difference without recoloring the logo.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><span class="eyebrow">02 · typography</span><h2>Editorial headlines, clear UI</h2></div><span class="source">Fraunces + Manrope</span></div>
+      <div class="pair">
+        <div class="panel type-panel">
+          <span class="eyebrow">Display · Fraunces</span>
+          <div class="type-display">Make space for <em>your week.</em></div>
+          <p class="type-ui">Manrope carries navigation, body copy, labels, and controls. Keep supporting text calm and easy to scan; use the display face for the few words that set the tone.</p>
+          <div class="type-meta">UI · Manrope · Fallbacks: Avenir Next, Segoe UI</div>
+        </div>
+        <div class="dark-panel">
+          <h3>Deep surfaces keep focus.</h3>
+          <p>Espresso panels frame the weekend ideas and action header. Cream text, peach accents, and generous line spacing carry the hierarchy.</p>
+          <div class="button-row"><button class="button" type="button">Primary action</button><button class="button secondary" type="button">Secondary</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><span class="eyebrow">03 · components</span><h2>Patterns already in the product</h2></div><span class="source">Extracted from App.tsx</span></div>
+      <div class="components">
+        <article class="panel event-card">
+          <span class="card-kicker">Week Ahead · event group</span>
+          <div class="event-day"><div class="day-mark"><span>MON</span><strong>01</strong></div><div><h3>Monday</h3><p>9:30 am · Set a gentle intention<br>A short check-in before the week gathers speed.</p></div></div>
+        </article>
+        <article class="outing-card">
+          <span class="card-kicker" style="color:var(--gold)">Music · sample idea</span>
+          <h3>A late set in a listening room</h3>
+          <p>Saturday · evening · Budget $$ · Travel 20 min</p>
+          <button class="why" type="button" aria-expanded="false">Why this might fit <span aria-hidden="true">+</span></button>
+        </article>
+      </div>
+      <div class="section-head" style="margin-top:16px"><div><span class="eyebrow">States · context</span></div></div>
+      <div class="panel" style="padding:18px"><div class="chips" role="group" aria-label="Example social contexts"><button class="chip" type="button" aria-pressed="false">All</button><button class="chip" type="button" aria-pressed="true">Solo</button><button class="chip" type="button" aria-pressed="false">Friends</button><button class="chip" type="button" aria-pressed="false">Date</button><button class="chip" type="button" aria-pressed="false">Group</button></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><span class="eyebrow">04 · interaction</span><h2>Clear states, accessible controls</h2></div></div>
+      <div class="states">
+        <div class="state"><b>Focused</b><p>3px bronze outline with a 3px offset; keep keyboard focus visible.</p></div>
+        <div class="state"><b>Selected</b><p>Use a filled forest or peach state plus `aria-pressed`, not color alone.</p></div>
+        <div class="state"><b>Reduced motion</b><p>Decorative movement yields to `prefers-reduced-motion`.</p></div>
+      </div>
+      <div class="focus-demo" style="margin-top:12px"><button type="button">Focusable example</button></div>
+      <div class="note">Context scores, event names, budget, and travel in the current preview are illustrative. Preserve those disclosures wherever this sample UI is reused.</div>
+    </section>
+    <footer><span>Gosie Week Ahead · extracted reference</span><span>Standalone system · existing screens unchanged</span></footer>
+  </main>
+</body>
+</html>

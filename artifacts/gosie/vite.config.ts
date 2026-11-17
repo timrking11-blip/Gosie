@@ -71,6 +71,15 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      // Keep Vite's default secret-file protections when extending the deny list.
+      deny: [
+        '.env',
+        '.env.*',
+        '*.{crt,pem}',
+        '**/.git/**',
+        '**/attached_assets/**',
+        '**/.migration-backup/**',
+      ],
     },
   },
   preview: {

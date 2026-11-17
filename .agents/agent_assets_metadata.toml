@@ -56,3 +56,17 @@ mtime_ms = 1793609839814
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/8e0eb97f-76b9-442c-9856-ff137e618cb3/d3fbf8d1-8172-45a7-82e8-1f639d1b521b"
 storage_version_token = "1793609897813394"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "K_yzNgqfdwXEaNe-gGf3K"
+uri = "file://design-system/gosie-week-ahead/preview.html"
+type = "html"
+title = "Gosie Week Ahead design system"
+description = "Self-contained visual preview of the extracted palette, typography, components, and interaction rules. Existing app screens are unchanged."
+logical_id = "23a12bbd-cffc-428f-84fa-6ce7dac30c35"
+content_hash = "sha256:d4ed9f00fc48655ba7a8051b6b614085c847eefb9748ee61e5e5f3da53e7e0fc"
+size = 14939
+mtime_ms = 1793874572418
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/23a12bbd-cffc-428f-84fa-6ce7dac30c35/67806e67-b627-49fd-b045-8d42870ac5ca"
+storage_version_token = "1793874611931201"
+content_type = "text/html"

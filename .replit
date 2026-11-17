@@ -4,6 +4,10 @@ modules = ["nodejs-24", "python-base-3.13"]
 runButton = "Project"
 
 [[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
 localPort = 21101
 externalPort = 3000
 exposeLocalhost = true
@@ -11,6 +15,10 @@ exposeLocalhost = true
 [[ports]]
 localPort = 23967
 externalPort = 80
+
+[[ports]]
+localPort = 26028
+externalPort = 3001
 
 [postMerge]
 path = "scripts/post-merge.sh"

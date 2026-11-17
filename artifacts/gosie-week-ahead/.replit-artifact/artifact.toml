@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/gosie-week-ahead/"
+title = "Gosie Week Ahead"
+description = "A responsive, mobile-first Gosie planning dashboard inspired by the supplied Week-Ahead artifact. It presents illustrative weekly events, weekend ideas and action checklists with local-only interactions; it does not connect to calendars or live listings."
+version = "1.0.0"
+id = "artifacts/gosie-week-ahead"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/gosie-week-ahead/" ]
+localPort = 26028
+
+[services.development]
+run = "pnpm --filter @workspace/gosie-week-ahead run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gosie-week-ahead", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/gosie-week-ahead/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26028"
+BASE_PATH = "/gosie-week-ahead/"
