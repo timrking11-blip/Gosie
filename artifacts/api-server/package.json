@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node production-server.js",
-    "test": "node --test hardening.test.js weekend-engine.test.js"
+    "test": "node --test hardening.test.js weekend-engine.test.js research-catalog.test.js"
   },
   "dependencies": {
     "pg": "^8.23.1"

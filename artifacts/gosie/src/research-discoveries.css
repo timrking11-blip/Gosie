@@ -1,0 +1,18 @@
+.research-discoveries {
+  margin: 1.5rem 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.research-discoveries > h2 { margin: 0 0 .75rem; font-size: 1.35rem; line-height: 1.35; }
+.research-discoveries p, .research-discoveries li { font-size: .95rem; line-height: 1.65; }
+.research-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.research-discovery { min-width: 0; padding: 1rem; border: 1px solid currentColor; border-radius: .75rem; }
+.research-discovery h3 { font-size: 1.25rem; line-height: 1.4; margin: .5rem 0; }
+.research-discovery summary { cursor: pointer; min-height: 44px; padding-block: .65rem; font-weight: 700; }
+.research-discovery a { text-decoration: underline; text-underline-offset: .2em; }
+.research-discovery ul { padding-left: 1.2rem; }
+.research-discoveries :is(a, button, summary):focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }

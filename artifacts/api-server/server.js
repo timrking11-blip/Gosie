@@ -3,6 +3,7 @@ const { pool } = require('./db');
 const { handleCommunity } = require('./community');
 const { demoProfiles, makeDemoWeek, currentWeekStart, addDays } = require('./demo-data');
 const { rankWeekend, validSocial } = require('./weekend-engine');
+const { readApprovedCatalog } = require('./research-catalog');
 const {
   clearSessionCookie,
   hash,
@@ -369,6 +370,10 @@ function createApiHandler() {
         });
       }
       if (!session) return send(res, 401, { error: 'unauthorized' });
+
+      if (req.method === 'GET' && path === '/discoveries') {
+        return send(res, 200, await readApprovedCatalog());
+      }
 
       const requireCsrf = () => hasCsrf(req, session.session);
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && path !== '/auth/register' && path !== '/auth/login' && !requireCsrf()) {

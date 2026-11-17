@@ -15,6 +15,8 @@ import type { Profile, ProfileConfig, ProfileExport, SocialContext, WeekItem, We
 import { ProductShell, PageHeading, Notice } from "@/components/product/ProductShell";
 import { groupPlans, localDate } from "@/lib/planning";
 import * as Dialog from "@radix-ui/react-dialog";
+import ResearchedDiscoveries from "@/components/product/ResearchedDiscoveries";
+import "@/research-discoveries.css";
 const CommunityPanel = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityPanel })));
 const CommunityDiscoveries = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityDiscoveries })));
 
@@ -323,6 +325,7 @@ function WeekendView({ profile, data, loading, error, feedback, onRetry, onFeedb
     <PageHeading eyebrow="YOUR WEEKEND · ROOM TO WANDER" title="Weekend Ahead">
       Fictional sample ideas ranked using this profile's interests, limits, and feedback. Listings, prices, and travel times are illustrative—not live or verified.
     </PageHeading>
+    <ResearchedDiscoveries />
     <div className="weekend-intro">
       <div className="weekend-intro-mark"><Sparkles size={20} /></div><div><strong>Make it your kind of weekend.</strong><span>Adjust interests and limits in your profile preferences.</span></div>
       <button className="text-button" onClick={onManage}>Tune preferences <ChevronRight size={15} /></button>

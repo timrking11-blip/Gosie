@@ -9,6 +9,7 @@ on:
       - "artifacts/gosie-mobile/**"
       - "lib/api-client-react/**"
       - "lib/community/**"
+      - "research/gosie/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -99,6 +100,8 @@ jobs:
         run: node artifacts/api-server/apply-schema.js
       - name: API security, ownership, portability, and restart regressions
         run: pnpm --filter @workspace/api-server test
+      - name: Public research fixtures and approved catalog safety
+        run: node --test research/gosie/research.test.cjs artifacts/api-server/research-catalog.test.js
 
   week-ahead:
     runs-on: ubuntu-latest

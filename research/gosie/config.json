@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "repository": "timrking11-blip/Gosie",
+  "enabled": false,
+  "scheduleEnabled": false,
+  "region": "",
+  "categories": ["restaurant", "exhibit", "experience"],
+  "provider": "none",
+  "cadence": { "weekday": 0, "hour": 9, "timezone": "America/New_York" },
+  "freshDays": 14,
+  "maxRequests": 8,
+  "maxRunSeconds": 90,
+  "maxResponseBytes": 262144,
+  "maxCandidates": 40,
+  "maxCostUsd": 0,
+  "approvedCostPerSearchUsd": 0,
+  "allowAdditionalSources": false,
+  "sources": []
+}
