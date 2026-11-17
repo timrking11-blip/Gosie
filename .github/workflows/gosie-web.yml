@@ -51,6 +51,8 @@ jobs:
         run: pnpm --filter @workspace/gosie typecheck
       - name: Existing and product regression tests
         run: pnpm --filter @workspace/gosie test
+      - name: Dev-server private-file access checks
+        run: pnpm --filter @workspace/gosie test:dev-server
       - name: Configured production build
         run: pnpm --filter @workspace/gosie build
       - name: Install production server dependencies
