@@ -42,7 +42,11 @@ node --test artifacts/api-server/production-server.test.js
 The API suite tests security headers, origin/CSRF checks, password/session flow,
 two-account ownership, profile validation, owned week CRUD/carry-forward,
 fictional-data labeling, hard constraints, latest feedback, import/export
-reference remapping, account deletion, and API-process restart persistence.
+reference remapping, account deletion, and API-process restart persistence. The
+dedicated restart test creates a uniquely named temporary PostgreSQL schema in
+the disposable test database, runs the API against it before and after restart,
+and drops the schema during cleanup. PostgreSQL does not use SQLite database,
+WAL, or SHM files.
 It is focused coverage for this pilot, **not** the historical B3 parity suite.
 CI provisions disposable Postgres instead of the former SQLite file.
 

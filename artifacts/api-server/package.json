@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node production-server.js",
-    "test": "node --test hardening.test.js weekend-engine.test.js research-catalog.test.js brave-discovery.test.js"
+    "test": "node --test hardening.test.js restart-persistence.test.js weekend-engine.test.js research-catalog.test.js brave-discovery.test.js"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.7.0",

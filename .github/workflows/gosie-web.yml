@@ -103,7 +103,7 @@ jobs:
         run: pnpm --filter @workspace/api-server... install --frozen-lockfile
       - name: Apply schema to disposable CI database
         run: node artifacts/api-server/apply-schema.js
-      - name: API security, ownership, portability, and restart regressions
+      - name: API regressions, including isolated process-restart persistence
         run: pnpm --filter @workspace/api-server test
       - name: Public research fixtures and approved catalog safety
         run: node --test research/gosie/*.test.cjs artifacts/api-server/research-catalog.test.js
