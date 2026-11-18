@@ -70,3 +70,31 @@ mtime_ms = 1794927515832
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/23a12bbd-cffc-428f-84fa-6ce7dac30c35/3c2b0a36-ed14-48b5-9be3-fc243b8a5c6c"
 storage_version_token = "1794927541875049"
 content_type = "text/html"
+
+[[outputs]]
+id = "MfN0-35UuIJlIAUPE4fHR"
+uri = "file://docs/google-calendar-pilot-spec.md"
+type = "text"
+title = "Gosie Google Calendar Pilot Specification"
+description = "Approval-ready proposal covering calendar-aware planning, explicit memory, reviewed discoveries, privacy, decisions and launch gates. Not implementation or launch approval."
+logical_id = "af023754-7fb5-478a-b582-693f45953fd5"
+content_hash = "sha256:abed9aa0238f3ee09e4ffe8162ec692b786c7f85b1e62c1ac4a40a8074d1e81a"
+size = 36918
+mtime_ms = 1794997493288
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/af023754-7fb5-478a-b582-693f45953fd5/d167c24a-9601-49a1-b074-751265b0bbeb"
+storage_version_token = "1794997532012904"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "Je9f_Dmj9D5p1V1UTuoVW"
+uri = "file://docs/google-calendar-pilot-implementation-prompt.md"
+type = "text"
+title = "Gosie Pilot — Ordered Implementation Prompt"
+description = "Seven gated stages, from approved contracts through provider testing and hosted launch evidence. No stage is authorized by this document alone."
+logical_id = "6c94abc9-a1c6-4cfe-8d44-94bf13807628"
+content_hash = "sha256:e731c7ade02085d3976f6afdf8fbe40f4c365c07ddb64bbaf4b7e274a7ef3239"
+size = 9998
+mtime_ms = 1794997437676
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/6c94abc9-a1c6-4cfe-8d44-94bf13807628/55752629-b7f0-4dfc-b156-42f19c37256a"
+storage_version_token = "1794997532411006"
+content_type = "text/markdown"
