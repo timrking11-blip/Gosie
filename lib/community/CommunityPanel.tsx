@@ -7,6 +7,7 @@ import type { CommunityComment, CommunityDraft, CommunityItem, CommunityMine } f
 import "./community.css";
 import { TimeSelect, localEventIso } from "./TimeSelect";
 import { OrganizationAccessPanel } from "./OrganizationAccessPanel";
+import { OrganizationReReviewPanel } from "./OrganizationReReviewPanel";
 import { REASON_MAX, decisionNote, reasonError, reasonHelp, reviewChecklist } from "./moderation";
 
 type Session = { authenticated: boolean; user?: { email?: string } | null; csrfToken?: string };
@@ -29,7 +30,10 @@ function eventRange(item: CommunityItem) {
     ? b.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : fmtDate(item.endsAt);
   return `${s} – ${end}`;
 }
-function errText(e: unknown, fallback: string) { return e instanceof Error ? e.message : fallback; }
+function errText(e: unknown, fallback: string) {
+  if (e instanceof Error && e.message === "organization_re_review_required") return "Review this contribution in Organization access re-review before making a moderation decision.";
+  return e instanceof Error ? e.message : fallback;
+}
 function isAbort(e: unknown) { return e instanceof DOMException && e.name === "AbortError"; }
 
 function useLoad<T>(path: string | null, apiBase: string, version: number): [Load<T>, () => void] {
@@ -268,6 +272,7 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
             </>}
         </section>
         {canSubmit && <section className="gc-section gc-submit" aria-labelledby="gc-submit-h"><h3 id="gc-submit-h">Suggest an event or gem</h3><SubmitForm apiBase={apiBase} onDone={done} /></section>}
+        {isMod && <OrganizationReReviewPanel key={`re-review-${version}`} apiBase={apiBase} onDone={done} />}
         {isMod && <section className="gc-section gc-mod" aria-labelledby="gc-mod-h">
           <div className="gc-section-head"><h3 id="gc-mod-h">Waiting for review</h3><span className="gc-private">Moderators only</span></div>
           <p className="gc-fine">Your own submissions are reviewed by someone else.</p>

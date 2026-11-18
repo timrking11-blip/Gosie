@@ -72,7 +72,7 @@ export function OrganizationAccessPanel({ apiBase, onDone }: { apiBase: string; 
     setBusy(true); setError("");
     try {
       await communityWrite(`${endpoint}/revoke`, { userId: revoking.userId, organizationType: revoking.organizationType, accessVersion: revoking.accessVersion, reason: revokeReason.trim() }, apiBase);
-      onDone("Organization access revoked. Existing contributions and their moderation status were retained.");
+      onDone("Organization access revoked. Existing contributions and their moderation status were retained. Moderators can re-review linked contributions.");
     } catch (err) { setError(message(err)); } finally { setBusy(false); }
   }
   return <section className="gc-section gc-mod gc-access" aria-labelledby="gc-access-h">

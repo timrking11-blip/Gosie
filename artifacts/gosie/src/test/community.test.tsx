@@ -44,6 +44,7 @@ beforeEach(() => {
     const json = path === "/auth/session" ? { authenticated: signedIn, csrfToken: "test-csrf" }
       : path === "/community/mine" ? { roles, items: own, comments: mineComments }
       : path === "/community/moderation" ? { items: queue, comments: queueComments }
+      : path === "/community/organization-reviews" ? { reviews: [], truncated: false }
       : { items: approved };
     return { ok: true, json: async () => json };
   }));

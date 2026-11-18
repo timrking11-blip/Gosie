@@ -112,3 +112,17 @@ mtime_ms = 1794999771912
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/e12da513-9b72-4c61-99ac-ea1cf7b0f60d/362eb94b-03d3-49cc-827e-a697a5218278"
 storage_version_token = "1794999794295896"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "UuJ9iaBU7oZ0nLbFMGPL3"
+uri = "file://docs/revoked-organization-content-policy.md"
+type = "text"
+title = "Gosie Revoked-Organization Re-review Policy"
+description = "Proposed people-first policy, moderator actions, privacy boundaries, implementation evidence and verification limits."
+logical_id = "120a88ff-726d-4807-9dc8-2e2f0b132a9a"
+content_hash = "sha256:c1c6683c372488aa27f850b60c66e7631e2c163158de8e1ede3290b1acbfadb9"
+size = 5513
+mtime_ms = 1795000614072
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/120a88ff-726d-4807-9dc8-2e2f0b132a9a/f9b8c956-05cb-41b5-a40f-5597db3832ff"
+storage_version_token = "1795000702710359"
+content_type = "text/markdown"

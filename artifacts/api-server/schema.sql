@@ -149,3 +149,27 @@ ALTER TABLE gosie_community_items ADD COLUMN IF NOT EXISTS decision_reason TEXT
   CHECK (decision_reason IS NULL OR length(trim(decision_reason)) BETWEEN 10 AND 1000);
 ALTER TABLE gosie_community_comments ADD COLUMN IF NOT EXISTS decision_reason TEXT
   CHECK (decision_reason IS NULL OR length(trim(decision_reason)) BETWEEN 10 AND 1000);
+
+-- Attribution is historical, not proof of current organization permission.
+-- NULL denotes legacy unknown provenance; new individual posts say individual.
+ALTER TABLE gosie_community_items ADD COLUMN IF NOT EXISTS organization_role TEXT;
+ALTER TABLE gosie_community_items ADD COLUMN IF NOT EXISTS organization_access_version TEXT;
+ALTER TABLE gosie_community_comments ADD COLUMN IF NOT EXISTS organization_role TEXT;
+ALTER TABLE gosie_community_comments ADD COLUMN IF NOT EXISTS organization_access_version TEXT;
+ALTER TABLE gosie_organization_access_reviews ADD COLUMN IF NOT EXISTS access_version TEXT;
+
+CREATE TABLE IF NOT EXISTS gosie_organization_content_reviews (
+  id TEXT PRIMARY KEY,
+  revocation_id TEXT NOT NULL REFERENCES gosie_organization_access_reviews(id) ON DELETE CASCADE,
+  item_id TEXT REFERENCES gosie_community_items(id) ON DELETE CASCADE,
+  comment_id TEXT REFERENCES gosie_community_comments(id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK (action IN ('retain','hide','dismiss')),
+  reason TEXT NOT NULL CHECK (length(trim(reason)) BETWEEN 10 AND 1000),
+  before_status TEXT NOT NULL CHECK (before_status IN ('pending','approved')),
+  before_decision_reason TEXT,
+  reviewed_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK ((item_id IS NULL) <> (comment_id IS NULL)),
+  UNIQUE (revocation_id, item_id),
+  UNIQUE (revocation_id, comment_id)
+);

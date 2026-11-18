@@ -14,6 +14,7 @@ function mockService(operator: boolean, failure = false) {
       : path.endsWith("/community/mine") ? { roles: ["moderator"], isOperator: operator, items: [], comments: [] }
       : path.endsWith("/organization-access") ? { grants: [{ userId: "synthetic-target", organizationType: "venue",
         publicIdentity: "Synthetic hall", accessVersion: "synthetic-version", legacy: false }], reviews: [], truncated: false }
+      : path.endsWith("/organization-reviews") ? { reviews: [], truncated: false }
       : { items: [], comments: [] };
     return { ok: true, json: async () => json };
   }));

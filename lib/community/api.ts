@@ -32,6 +32,10 @@ export type CommunityComment = {
 export type CommunityDraft = Pick<CommunityItem, "kind" | "title" | "description" | "location" | "attribution"> &
   { sourceUrl?: string; startsAt?: string | null; endsAt?: string | null };
 export type CommunityMine = { roles: CommunityRole[]; isOperator?: boolean; items: CommunityItem[]; comments: CommunityComment[] };
+export type OrganizationContentReview = {
+  revocationId: string; revokedAt: string; organizationType: string; publicIdentity: string;
+  basis: "recorded-grant" | "legacy-attribution"; canReview: boolean;
+} & ({ contentType: "items"; content: CommunityItem } | { contentType: "comments"; content: CommunityComment; parent?: CommunityItem | null });
 
 export async function communityRequest<T>(path: string, options: RequestInit = {}, apiBase = "/api"): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {

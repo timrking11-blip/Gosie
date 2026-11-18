@@ -912,3 +912,124 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.equal((await get('/community/items?includeExpired=true')).json.items.some((row) => row.id === gem.id || row.id === item.id), false);
   });
 });
+
+test('revoked organization contributions get private, reasoned, non-publishing re-review', async (t) => {
+  const operator = await makeUser(primary.port), organization = await makeUser(primary.port);
+  const moderator = await makeUser(primary.port), reader = await makeUser(primary.port);
+  const person = await makeUser(primary.port);
+  const auth = (u) => ({ cookie: u.cookie, csrf: u.csrf });
+  const get = (route, u) => call(primary.port, 'GET', route, u ? auth(u) : {});
+  const post = (route, body, u = moderator) => call(primary.port, 'POST', route, { ...auth(u), body });
+  const name = 'Synthetic re-review organization';
+  await testPool.query('INSERT INTO gosie_community_operators(user_id) VALUES ($1)', [operator.id]);
+  await testPool.query("INSERT INTO gosie_community_roles(user_id,role) VALUES ($1,'moderator'),($2,'contributor'),($2,'moderator'),($3,'contributor')",
+    [moderator.id, organization.id, person.id]);
+  const draft = { kind: 'gem', title: 'Synthetic local resource', description: 'Synthetic useful local details.',
+    location: 'Fictional test area', attribution: name };
+  const submit = async (u = organization, extra = {}) => {
+    const result = await post('/community/items', { ...draft, ...extra }, u);
+    assert.equal(result.status, 201); return result.json.item;
+  };
+  const approve = (kind, id) => post(`/community/moderation/${kind}/${id}`,
+    { decision: 'approved', decisionReason: 'Practical local details are useful to people.' });
+  const individual = await submit();
+  assert.equal((await post('/community/organization-access', { userId: organization.id, organizationType: 'venue',
+    publicIdentity: name, reason: 'Synthetic authorized representation review.' }, operator)).status, 201);
+  const approved = await submit(), pending = await submit(), legacy = await submit();
+  assert.equal((await approve('items', approved.id)).status, 200);
+  await testPool.query('UPDATE gosie_community_items SET organization_role=NULL,organization_access_version=NULL WHERE id=$1', [legacy.id]);
+  const future = new Date(Date.now() + 86400000 * 2);
+  const event = await submit(person, { kind: 'event', startsAt: future.toISOString(),
+    endsAt: new Date(future.getTime() + 3600000).toISOString() });
+  assert.equal((await approve('items', event.id)).status, 200);
+  const note = (await post(`/community/items/${event.id}/comments`, { text: 'Synthetic practical organization note.' }, organization)).json.comment;
+  const pendingNote = (await post(`/community/items/${event.id}/comments`, { text: 'Synthetic pending organization note.' }, organization)).json.comment;
+  assert.equal((await approve('comments', note.id)).status, 200);
+  const grants = (await get('/community/organization-access', operator)).json.grants;
+  const grant = grants.find((row) => row.userId === organization.id);
+  assert.equal((await post('/community/organization-access/revoke', { userId: organization.id,
+    organizationType: 'venue', accessVersion: grant.accessVersion, reason: 'PRIVATE synthetic operator revocation explanation.' }, operator)).status, 200);
+  let reviews = (await get('/community/organization-reviews', moderator)).json.reviews;
+  const reviewOf = (id) => reviews.find((row) => row.content.id === id);
+  const decide = (review, action, u = moderator, extra = {}) =>
+    post(`/community/organization-reviews/${review.revocationId}/${review.contentType}/${review.content.id}`,
+      { action, expectedStatus: review.content.status, reason: 'Useful local information evaluated independently of access.', ...extra }, u);
+
+  await t.test('revocation preserves attribution and visibility, blocks future organization writes, and identifies legacy uncertainty', async () => {
+    for (const id of [approved.id, pending.id, legacy.id, note.id, pendingNote.id]) assert.ok(reviewOf(id));
+    assert.equal(reviewOf(approved.id).basis, 'recorded-grant');
+    assert.equal(reviewOf(legacy.id).basis, 'legacy-attribution');
+    assert.equal(reviewOf(note.id).parent.id, event.id);
+    assert.equal(Object.hasOwn(reviewOf(note.id).parent, 'user_id'), false);
+    assert.equal(reviewOf(individual.id), undefined, 'new individually attributed posts must not be inferred as organization posts');
+    assert.equal(reviewOf(approved.id).content.attribution, name);
+    assert.equal(reviewOf(approved.id).content.status, 'approved');
+    assert.equal(reviewOf(pending.id).content.status, 'pending');
+    assert.equal(JSON.stringify(reviews).includes('PRIVATE synthetic'), false);
+    const own = (await get('/community/organization-reviews', organization)).json.reviews;
+    assert.equal(own.find((row) => row.content.id === approved.id).canReview, false);
+    const feed = (await get('/community/items')).json.items;
+    assert.equal(feed.some((row) => row.id === approved.id), true);
+    assert.equal(feed.some((row) => row.id === pending.id), false);
+    assert.equal(feed.find((row) => row.id === event.id).comments.some((row) => row.id === note.id), true);
+    assert.equal((await post(`/community/items/${event.id}/comments`, { text: 'No longer permitted.' }, organization)).status, 403);
+    const newPersonal = await submit();
+    assert.equal((await testPool.query('SELECT organization_role FROM gosie_community_items WHERE id=$1', [newPersonal.id])).rows[0].organization_role, 'individual');
+  });
+  await t.test('only another moderator with CSRF and a valid reason can act; pending approval cannot bypass re-review', async () => {
+    const review = reviewOf(pending.id);
+    assert.equal((await get('/community/organization-reviews')).status, 401);
+    for (const actor of [reader, operator]) {
+      assert.equal((await get('/community/organization-reviews', actor)).status, 403);
+      assert.equal((await decide(review, 'retain', actor)).status, 403);
+    }
+    for (const action of ['retain', 'hide', 'dismiss']) assert.equal((await decide(review, action, organization)).status, 403);
+    assert.equal((await decide(review, 'retain', { ...moderator, csrf: 'wrong' })).status, 403);
+    assert.equal((await decide(review, 'retain', moderator, { reason: 'short' })).status, 400);
+    assert.equal((await decide(review, 'retain', moderator, { reason: 'x'.repeat(1001) })).status, 400);
+    assert.equal((await decide(review, 'retain', moderator, { arbitrary: true })).status, 400);
+    assert.equal((await approve('items', pending.id)).status, 409);
+    assert.equal((await approve('comments', pendingNote.id)).status, 409);
+    assert.equal((await decide(review, 'dismiss')).status, 400);
+  });
+  await t.test('retain never approves pending content, stale decisions fail, and separate ordinary moderation is still required', async () => {
+    const review = reviewOf(pending.id);
+    assert.equal((await decide(review, 'retain', moderator, { expectedStatus: 'approved' })).status, 409);
+    const result = await decide(review, 'retain');
+    assert.equal(result.status, 200); assert.equal(result.json.status, 'pending');
+    assert.equal((await decide(review, 'hide')).status, 409);
+    assert.equal((await get('/community/items')).json.items.some((row) => row.id === pending.id), false);
+    assert.equal((await approve('items', pending.id)).status, 200);
+    assert.equal((await decide(reviewOf(pendingNote.id), 'retain')).json.status, 'pending');
+    assert.equal((await approve('comments', pendingNote.id)).status, 200);
+  });
+  await t.test('re-granting does not erase old review flags; explicit hide removes approved items and notes without deletion', async () => {
+    assert.equal((await post('/community/organization-access', { userId: organization.id, organizationType: 'nonprofit',
+      publicIdentity: 'Synthetic new identity', reason: 'Synthetic independent new organization approval.' }, operator)).status, 201);
+    reviews = (await get('/community/organization-reviews', moderator)).json.reviews;
+    assert.ok(reviewOf(approved.id)); assert.ok(reviewOf(note.id));
+    const reason = 'Outdated local details need a reliable current source.';
+    assert.equal((await decide(reviewOf(approved.id), 'hide', moderator, { reason })).status, 200);
+    assert.equal((await decide(reviewOf(note.id), 'hide', moderator, { reason })).status, 200);
+    const feed = (await get('/community/items?includeExpired=true')).json.items;
+    assert.equal(feed.some((row) => row.id === approved.id), false);
+    assert.equal(feed.find((row) => row.id === event.id).comments.some((row) => row.id === note.id), false);
+    const own = (await get('/community/mine', organization)).json;
+    assert.equal(own.items.find((row) => row.id === approved.id).decisionReason, reason);
+    assert.equal(own.comments.find((row) => row.id === note.id).decisionReason, reason);
+    assert.equal(own.items.find((row) => row.id === approved.id).attribution, name);
+    const stored = (await testPool.query('SELECT * FROM gosie_organization_content_reviews WHERE item_id=$1', [approved.id])).rows[0];
+    assert.equal(stored.before_status, 'approved');
+    assert.match(stored.before_decision_reason, /Practical local details/);
+  });
+  await t.test('legacy mismatch dismissal preserves pending privacy; no review or provenance fields enter public feeds', async () => {
+    assert.equal((await decide(reviewOf(legacy.id), 'dismiss')).json.status, 'pending');
+    assert.equal((await get('/community/organization-reviews', moderator)).json.reviews.some((row) => row.content.id === legacy.id), false);
+    const response = await get('/community/items?includeExpired=true');
+    assert.equal(response.json.items.some((row) => row.id === legacy.id), false);
+    for (const field of ['revocationId', 'basis', 'organization_role', 'organization_access_version', 'reviewed_by', 'decisionReason']) {
+      assert.equal(response.text.includes(`\"${field}\"`), false);
+    }
+    assert.equal(response.text.includes('PRIVATE synthetic'), false);
+  });
+});

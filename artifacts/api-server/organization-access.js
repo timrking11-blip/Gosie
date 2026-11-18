@@ -55,20 +55,23 @@ async function handleOrganizationAccess({ req, path, body, userId, reply }) {
     const existing = await client.query(`SELECT * FROM gosie_community_roles
       WHERE user_id=$1 AND role=ANY($2::text[]) FOR UPDATE`, [body.userId, types]);
     let identity = body.publicIdentity?.trim();
+    let accessVersion;
     if (revoke) {
       const grant = existing.rows.find((row) => row.role === body.organizationType && row.access_version === body.accessVersion);
       if (!grant) { await client.query('ROLLBACK'); return reply(409, { error: 'access_changed_refresh_required' }); }
       identity = grant.organization_name || grant.restaurant_name;
+      accessVersion = grant.access_version;
       await client.query('DELETE FROM gosie_community_roles WHERE user_id=$1 AND role=$2', [body.userId, body.organizationType]);
     } else {
       if (existing.rowCount) { await client.query('ROLLBACK'); return reply(409, { error: 'revoke_existing_organization_first' }); }
+      accessVersion = token(16);
       await client.query(`INSERT INTO gosie_community_roles (user_id,role,restaurant_name,organization_name,access_version)
         VALUES ($1,$2,$3,$4,$5)`, [body.userId, body.organizationType,
-        body.organizationType === 'restaurant-owner' ? identity : null, identity, token(16)]);
+        body.organizationType === 'restaurant-owner' ? identity : null, identity, accessVersion]);
     }
     await client.query(`INSERT INTO gosie_organization_access_reviews
-      (id,user_id,reviewed_by,organization_type,public_identity,action,reason) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [`access-${token(12)}`, body.userId, userId, body.organizationType, identity, revoke ? 'revoke' : 'grant', body.reason.trim()]);
+      (id,user_id,reviewed_by,organization_type,public_identity,action,reason,access_version) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [`access-${token(12)}`, body.userId, userId, body.organizationType, identity, revoke ? 'revoke' : 'grant', body.reason.trim(), accessVersion]);
     await client.query('COMMIT');
     return reply(revoke ? 200 : 201, { status: revoke ? 'revoked' : 'granted' });
   } catch (error) { await client.query('ROLLBACK'); throw error; }
