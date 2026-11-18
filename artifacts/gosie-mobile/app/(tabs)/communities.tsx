@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommunityCard, communityStyles as s } from '../../components/CommunityFeed';
+import OrganizationReReviewPanel from '../../components/OrganizationReReviewPanel';
 import { mobileCommunityRequest as request, useCommunityItems } from '../../hooks/useCommunity';
 import type { CommunityDraft, CommunityMine, CommunityItem, CommunityComment } from '../../../../lib/community/api';
 import { hasOrganizationRole } from '../../../../lib/community/api';
@@ -63,6 +64,10 @@ export default function CommunitiesScreen() {
       <View style={s.row}>{(['approved', 'rejected'] as const).map((decision) => <React.Fragment key={decision}>{button(`${decision === 'approved' ? 'Approve' : 'Reject'} ${noun}`, () => void act(async () => { await mutate(`/community/moderation/${kind}/${record.id}`, { decision, decisionReason: reason.trim() }); setReasons((current) => ({ ...current, [key]: '' })); }, `${noun === 'find' ? 'Find' : 'Comment'} ${decision}.`), invalid !== '')}</React.Fragment>)}</View>
     </View>;
   };
+  const onOrganizationReviewDone = (notice: string) => {
+    setMessage(notice);
+    void Promise.all([feed.refresh(), loadPrivate()]);
+  };
   return <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f0e5' }} edges={['top']}><ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
     <Text accessibilityRole="header" style={s.title}>Gosie Communities</Text>
     <Text style={s.body}>For people. Made better by local knowledge—not an advertising directory. Invited people, restaurants, venues, municipalities, and nonprofits can share useful local finds. Every contribution is moderated. Community content is separate from Gosie's fictional examples. Confirm details with the source.</Text>
@@ -104,6 +109,7 @@ export default function CommunitiesScreen() {
         {queue.items.map((item) => <CommunityCard item={item} key={item.id}>{decide('items', item, 'find')}</CommunityCard>)}
         {queue.comments.map((comment) => <View key={comment.id} style={s.card}><Text style={s.label}>{comment.attribution} · organization note for {comment.itemId}</Text><Text style={s.body}>{comment.text}</Text>{decide('comments', comment, 'comment')}</View>)}
       </View>}
+      {mine.roles.includes('moderator') && <OrganizationReReviewPanel onDone={onOrganizationReviewDone} />}
       {button('Sign out of Communities', () => void act(() => mutate('/auth/logout', {}), 'Signed out.'))}
     </>}
   </ScrollView></SafeAreaView>;
