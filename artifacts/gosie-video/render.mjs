@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { validatePromoExports } from "./validate.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const workspace = path.resolve(here, "../..");
@@ -263,3 +264,12 @@ try {
 } finally {
   await rm(narrationDir, { recursive: true, force: true });
 }
+
+await validatePromoExports({
+  silentPath: silentOutputPath,
+  narratedPath: narratedOutputPath,
+  width,
+  height,
+  fps,
+  duration,
+});
