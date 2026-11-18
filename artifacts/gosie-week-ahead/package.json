@@ -8,7 +8,7 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts && vitest run --config vitest.config.ts"
+    "test": "node ../../design-system/gosie-week-ahead/check-mobile-token-sync.mjs && node --experimental-strip-types --test src/lib/*.test.ts && vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

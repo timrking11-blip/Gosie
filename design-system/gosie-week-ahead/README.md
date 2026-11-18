@@ -21,19 +21,21 @@ and pilot screens are outside this approval.
   accessibility caveats; distinguishes existing values from future guidance.
 - `preview.html` — a self-contained visual reference.
 
-## Source of truth
+## Source of truth and mobile synchronization
 
-The extraction uses:
+`tokens.css` is the source of truth for colors and the base radius shared with
+Gosie Mobile. Mobile keeps its native-friendly semantic object in
+`artifacts/gosie-mobile/constants/colors.ts`; the mapping is checked by
+`check-mobile-token-sync.mjs`. Both the Week Ahead and mobile test commands run
+that check, so a mismatch fails verification before it can drift unnoticed.
 
-- `artifacts/gosie-week-ahead/src/index.css`
-- `artifacts/gosie-week-ahead/src/App.tsx`
-- `artifacts/gosie-week-ahead/public/brand/gosie-mark.svg`
-- `artifacts/gosie-week-ahead/public/brand/gosie-wordmark.svg`
-- `artifacts/gosie-mobile/constants/colors.ts`
+The mobile app may keep platform-specific tokens (including its dark palette
+and colors not represented by this interface system) in its own file. The
+check covers only shared light-palette roles and the shared base radius; it
+does not authorize applying the rest of this design system to mobile screens.
 
-The values in `tokens.css` reflect the web interface tokens. The SVG files
-contain slightly different, original brand colors. Both are documented rather
-than silently altered.
+The SVG files contain slightly different, original brand colors. Both are
+documented rather than silently altered.
 
 ## Apply only with approval
 
