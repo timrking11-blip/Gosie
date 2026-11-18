@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type Discovery = {
   id: string; title: string; venue: string; region: string; category: string;
@@ -20,28 +20,55 @@ export default function ResearchedDiscoveries() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [retryAnnouncement, setRetryAnnouncement] = useState("");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const retryingRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!retryAnnouncement || !retryingRef.current) return;
+    headingRef.current?.focus();
+    retryingRef.current = false;
+  }, [retryAnnouncement]);
   useEffect(() => {
     const controller = new AbortController();
-    setError("");
     fetch("/api/discoveries", { credentials: "same-origin", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Approved discoveries could not be loaded.");
         const result = await response.json() as Catalog;
         if (result.schemaVersion !== 1 || !Array.isArray(result.records)) throw new Error("The discovery catalog is unavailable.");
         setCatalog(result);
+        if (retryingRef.current) {
+          const count = result.records.length;
+          setRetryAnnouncement(count === 0
+            ? "No approved discoveries are currently available."
+            : `Loaded ${count} approved ${count === 1 ? "discovery" : "discoveries"}.`);
+          setError("");
+          setRetryBusy(false);
+        }
       })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Discoveries could not be loaded.");
+        if (!controller.signal.aborted) {
+          retryingRef.current = false;
+          setRetryBusy(false);
+          setError(cause instanceof Error ? cause.message : "Discoveries could not be loaded.");
+        }
       });
     return () => controller.abort();
   }, [attempt]);
 
-  return <section className="research-discoveries" aria-labelledby="research-discoveries-heading">
-    <h2 id="research-discoveries-heading">From public sources, reviewed by Gosie</h2>
+  return <section className="research-discoveries reviewed-discoveries" aria-labelledby="research-discoveries-heading">
+    <h2 id="research-discoveries-heading" ref={headingRef} tabIndex={-1}>From public sources, reviewed by Gosie</h2>
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{retryAnnouncement}</p>
     <p>Separate from the fictional ranked ideas below. These are reviewed public-source leads, not personalized recommendations.
       Price, travel, accessibility, hours and availability are unknown unless you confirm them with the source.
       Your profile limits have not been evaluated for these discoveries.</p>
-    {error ? <div role="alert"><p>{error}</p><button type="button" className="secondary-button" onClick={() => setAttempt((value) => value + 1)}>Retry discoveries</button></div> :
+    {error ? <div role="alert"><p>{error}</p><button type="button" className="secondary-button" aria-disabled={retryBusy} onClick={() => {
+      if (retryBusy) return;
+      retryingRef.current = true;
+      setRetryAnnouncement("");
+      setRetryBusy(true);
+      setAttempt((value) => value + 1);
+    }}>{retryBusy ? "Retrying discoveries…" : "Retry discoveries"}</button></div> :
       !catalog ? <p role="status">Loading reviewed discoveries…</p> :
         <>
           {catalog.warning && <p role="status">{catalog.warning}</p>}

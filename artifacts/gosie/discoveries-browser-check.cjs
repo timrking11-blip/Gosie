@@ -93,7 +93,7 @@ async function main() {
         if (navigation.errorText) throw new Error(`Navigation failed: ${navigation.errorText}`);
         await until(`!!document.querySelector('.research-discovery')`);
         if (scale === 2) await evaluate(`document.documentElement.style.fontSize='200%'`);
-        await evaluate(`document.querySelector('.research-discoveries').scrollIntoView()`);
+        await evaluate(`document.querySelector('.reviewed-discoveries').scrollIntoView()`);
         // Use browser keyboard events, not DOM click simulation.
         await evaluate(`document.querySelector('.research-discovery summary').focus()`);
         await send('Emulation.setFocusEmulationEnabled', { enabled: true });
@@ -110,7 +110,7 @@ async function main() {
         assert.equal(await evaluate(`document.querySelector('.research-discovery details').open`), false);
         await key('Enter', 'Enter', 13);
         const dimensions = await evaluate(`(() => {
-          const section=document.querySelector('.research-discoveries');
+          const section=document.querySelector('.reviewed-discoveries');
           return {width:innerWidth,documentWidth:document.documentElement.scrollWidth,
             sectionWidth:section.clientWidth,sectionScroll:section.scrollWidth,
             font:getComputedStyle(section.querySelector('p')).fontSize,
@@ -126,25 +126,44 @@ async function main() {
         assert.deepEqual(dimensions.overflow, []);
         const injection = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.discoveryMode='error'` });
         await send('Page.reload');
-        await until(`!!document.querySelector('.research-discoveries [role=alert]')`);
+        await until(`!!document.querySelector('.reviewed-discoveries [role=alert]')`);
         if (scale === 2) await evaluate(`document.documentElement.style.fontSize='200%'`);
-        await evaluate(`window.discoveryMode='empty'; document.querySelector('.research-discoveries button').focus()`);
+        await evaluate(`document.querySelector('.reviewed-discoveries [role=alert] button').focus()`);
         await key('Enter', 'Enter', 13);
-        await until(`document.querySelector('.research-discoveries')?.textContent.includes('No current discoveries')`);
-        assert.equal(await evaluate('window.discoveryRequests'), 2);
-        results.at(-1).retryToEmpty = 'Keyboard retry after 503 reached the empty state';
+        await until(`window.discoveryRequests===2 && document.querySelector('.reviewed-discoveries [role=alert] button')?.textContent.includes('Retry discoveries')`);
+        assert.equal(await evaluate(`document.activeElement===document.querySelector('.reviewed-discoveries [role=alert] button')`), true);
+        await key('Enter', 'Enter', 13);
+        await until(`window.discoveryRequests===3 && document.querySelector('.reviewed-discoveries [role=alert] button')?.textContent.includes('Retry discoveries')`);
+        assert.equal(await evaluate(`document.activeElement===document.querySelector('.reviewed-discoveries [role=alert] button')`), true);
+        await evaluate(`window.discoveryMode='empty'`);
+        await key('Enter', 'Enter', 13);
+        await until(`document.querySelector('.reviewed-discoveries [aria-live="polite"]')?.textContent.includes('No approved discoveries are currently available')`);
+        assert.equal(await evaluate('window.discoveryRequests'), 4);
+        assert.equal(await evaluate(`document.activeElement.id`), 'research-discoveries-heading');
+        results.at(-1).retryToEmpty = 'Repeated 503 responses kept focus on retry; successful empty retry announced result and focused section heading';
         await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: injection.identifier });
+        const populatedInjection = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.discoveryMode='error'` });
+        await send('Page.reload');
+        await until(`!!document.querySelector('.reviewed-discoveries [role=alert]')`);
+        await evaluate(`window.discoveryMode='ready'; document.querySelector('.reviewed-discoveries [role=alert] button').focus()`);
+        await key('Enter', 'Enter', 13);
+        await until(`document.querySelector('.reviewed-discoveries [aria-live="polite"]')?.textContent.includes('Loaded 1 approved discovery')`);
+        assert.equal(await evaluate(`document.activeElement.id`), 'research-discoveries-heading');
+        assert.equal(await evaluate('window.discoveryRequests'), 2);
+        results.at(-1).retryToPopulated = 'Successful populated retry announced result and focused section heading';
+        await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: populatedInjection.identifier });
       }
     }
     // Remount via real browser reload with a separate injected initial state.
     await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.discoveryMode='error'` });
     await send('Page.reload');
-    await until(`!!document.querySelector('.research-discoveries [role=alert]')`);
-    await evaluate(`window.discoveryMode='empty'; document.querySelector('.research-discoveries button').focus()`);
+    await until(`!!document.querySelector('.reviewed-discoveries [role=alert]')`);
+    await evaluate(`window.discoveryMode='empty'; document.querySelector('.reviewed-discoveries [role=alert] button').focus()`);
     await key('Enter', 'Enter', 13);
-    await until(`document.querySelector('.research-discoveries')?.textContent.includes('No current discoveries')`);
+    await until(`document.querySelector('.reviewed-discoveries [aria-live="polite"]')?.textContent.includes('No approved discoveries are currently available')`);
     const retryRequests = await evaluate('window.discoveryRequests');
     assert.equal(retryRequests, 2);
+    assert.equal(await evaluate(`document.activeElement.id`), 'research-discoveries-heading');
     assert.deepEqual(exceptions, []);
     const report = { mode: 'Live Chromium with isolated synthetic session and API responses; not a real authentication test',
       results, retryRequests, empty: true, runtimeExceptions: exceptions,
