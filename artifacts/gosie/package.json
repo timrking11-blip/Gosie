@@ -7,6 +7,7 @@
     "dev": "node dev-server.cjs",
     "build": "vite build --config vite.config.ts",
     "serve": "node ../api-server/production-server.js",
+    "check:release-privacy": "node release-privacy-check.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:dev-server": "node --test dev-server-access.test.cjs"
