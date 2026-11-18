@@ -47,14 +47,14 @@ content_type = "video/mp4"
 id = "AtQCOQVVBRsvmBhYhlOav"
 uri = "file://generated-artifacts/gosie-promo-narrated.mp4"
 type = "video"
-title = "Gosie Promo — Narrated"
-description = "18.5-second, 1280×720 MP4 with calm offline-synthesized narration. Fictional-demo and private-prototype wording retained."
+title = "Gosie promo with captions"
+description = "18.5-second narrated promo with synchronized captions burned into the video."
 logical_id = "8e0eb97f-76b9-442c-9856-ff137e618cb3"
-content_hash = "sha256:70d14c86734f267ff27ca977e4914f26a2d4836d1d8091f7212b6d49fff2e8a3"
-size = 1369071
-mtime_ms = 1793609839814
-storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/8e0eb97f-76b9-442c-9856-ff137e618cb3/d3fbf8d1-8172-45a7-82e8-1f639d1b521b"
-storage_version_token = "1793609897813394"
+content_hash = "sha256:5dbf0aa67e0a4b6d5bf327c142b59a3fe0ba32b2d840fbc9a17dfd5f6a8ff74e"
+size = 1439048
+mtime_ms = 1795002051329
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/8e0eb97f-76b9-442c-9856-ff137e618cb3/a8e86eff-e068-4b25-8d4f-ef6ca8815f22"
+storage_version_token = "1795002171601237"
 content_type = "video/mp4"
 
 [[outputs]]
@@ -196,3 +196,17 @@ mtime_ms = 1794997244266
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/48dde1b7-937c-4f46-89a6-f53e772d30ad/55170124-f02c-47f1-8fe2-d8b02bf6b5c6"
 storage_version_token = "1794997279809578"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "rKVJEGqZqLeud9m1f0t_K"
+uri = "file://artifacts/gosie-video/gosie-promo.en.srt"
+type = "unspecified"
+title = "Gosie promo caption track"
+description = "English SRT captions synchronized to the narrated promo."
+logical_id = "399953f7-8d98-4b35-b399-42ebbbd6305b"
+content_hash = "sha256:5081d22140b8fb729f638b53a97162677ff0bb7570d38bd2310578b87f62b8aa"
+size = 425
+mtime_ms = 1795002056629
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/399953f7-8d98-4b35-b399-42ebbbd6305b/42dc1966-0855-4edc-aff3-2a20cc2e8be6"
+storage_version_token = "1795002172007885"
+content_type = "application/octet-stream"

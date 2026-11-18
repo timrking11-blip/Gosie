@@ -1,0 +1,19 @@
+1
+00:00:00,150 --> 00:00:02,450
+A little help for everything ahead.
+
+2
+00:00:02,950 --> 00:00:06,850
+Week Ahead shows a fictional week of plans and sample priorities.
+
+3
+00:00:07,400 --> 00:00:11,250
+Weekend Ahead shifts sample ideas with the social context you choose.
+
+4
+00:00:11,800 --> 00:00:14,350
+Sample interests, not personal history.
+
+5
+00:00:15,000 --> 00:00:18,450
+Private prototype. Release date to be announced.
