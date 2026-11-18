@@ -20,7 +20,7 @@ to plans, or change the fictional recommendation ranking/feedback IDs.
 
 ```sh
 node research/gosie/cli.cjs check
-node --test research/gosie/research.test.cjs artifacts/api-server/research-catalog.test.js
+node --test research/gosie/*.test.cjs artifacts/api-server/research-catalog.test.js
 node research/gosie/cli.cjs run
 ```
 
@@ -83,12 +83,45 @@ Unknown dates remain null; first-seen is never presented as an opening date.
 
 Same canonical identity merges across sources and preserves first-seen history.
 Tracking parameters/fragments are removed from evidence URLs. Different article
-headlines for the same place can require reviewer identity reconciliation:
-normalize venue/title, recompute `identity(record)`, consolidate evidence and
-retain the earliest first-seen timestamp. Do not merge different exhibits merely
+headlines for the same place require explicit reviewer identity reconciliation
+using the alias operation below. Do not merge different exhibits merely
 because they share a venue or source page. Changed excerpts invalidate candidate
 review and flag conflicting evidence; this is a conservative signal, not automatic
 semantic understanding of a closure/delay. Reviewers must establish those statuses.
+
+### Review a renamed headline or duplicate lead
+
+Compare the original sources and exhibit dates first. Shared venue names, URLs,
+model guesses and similar titles are not sufficient identity evidence.
+
+```sh
+# Preview only: prints the retained candidate and full archived source snapshot.
+node research/gosie/cli.cjs merge FROM_ID RETAINED_ID PUBLIC_REVIEWER_LABEL "Reason these are the same experience"
+# After examining that preview, record the local candidate-state decision:
+node research/gosie/cli.cjs merge FROM_ID RETAINED_ID PUBLIC_REVIEWER_LABEL "Reason these are the same experience" --reviewed
+```
+
+Both commands are offline; the preview takes the existing local run lock but
+does not write state. The confirmed operation atomically writes only `state.json`.
+Review its diff in a PR. It never promotes, publishes, changes `approved.json`,
+enables scheduling, or calls a provider.
+
+The retained ID/title/venue and claim indexes remain stable. The earliest first
+observation and latest check survive. Distinct evidence observations (including
+conflicting excerpts at the same URL) are preserved, not overwritten. The alias
+ledger stores the removed candidate's full snapshot, reviewer label, reason and
+time; later ingestion follows only these explicit aliases, including chains.
+All merges invalidate candidate verification and require conflict/claim review
+before a separate promotion. Retaining claims is not confirmation they are true.
+
+An approved source ID cannot be retired. Select the approved record as the
+retained target; if both IDs are already approved, stop for separate catalog
+reconciliation rather than silently breaking either ID. Cross-category or
+cross-region merges, cycles, dangling aliases and missing candidates are rejected.
+More than 12 distinct evidence observations fails explicitly before any state
+write rather than silently dropping evidence. These cases require review, not an
+automatic model match or destructive pruning. Use public reviewer labels, never
+personal addresses or private participant information.
 
 ## Review and promotion
 
@@ -131,6 +164,18 @@ that the item fits a user's limits. The existing fictional numeric ranking stays
 separate. No personal information is sent to a provider.
 
 ## Verification in the current worktree
+
+Alias/merge update: the offline research and catalog command above passes **23
+tests**, including seven alias/merge checks. These cover renamed headlines,
+separate exhibits at one venue, conflicting source snapshots, approved-ID safety,
+alias chains/cycles, evidence-capacity refusal, disabled-run safety and CLI
+preview/confirmation/replay in a temporary directory. Both research-related CI
+commands include the new fixtures. CI execution itself was not verified.
+The real candidate/catalog files were not changed, and no live requests,
+deployment, UI changes or publication were performed for this update.
+
+Earlier baseline results below describe the original research implementation,
+not additional checks rerun for the alias-only update:
 
 - Research/catalog fixtures: 16 passed (includes 3 catalog tests also in the API suite).
 - API suite: 36 passed, including authenticated catalog access and existing

@@ -101,7 +101,7 @@ jobs:
       - name: API security, ownership, portability, and restart regressions
         run: pnpm --filter @workspace/api-server test
       - name: Public research fixtures and approved catalog safety
-        run: node --test research/gosie/research.test.cjs artifacts/api-server/research-catalog.test.js
+        run: node --test research/gosie/*.test.cjs artifacts/api-server/research-catalog.test.js
 
   week-ahead:
     runs-on: ubuntu-latest

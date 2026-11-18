@@ -1,5 +1,5 @@
 const {
-  configErrors, publicUrl, canonicalUrl, identity, validateRecord, materialDigest, lifecycle, text,
+  configErrors, publicUrl, canonicalUrl, identity, validateRecord, validateState, validateCatalog, materialDigest, lifecycle, text,
 } = require('./contract.cjs');
 const { safeFetch } = require('./safe-fetch.cjs');
 
@@ -45,11 +45,15 @@ function draftRecord({ title, venue, category, region, source, excerpt, referenc
   record.id = identity(record);
   return record;
 }
-function mergeCandidates(previous, incoming) {
+function mergeCandidates(previous, incoming, aliases = []) {
   const records = new Map(previous.map((record) => [record.id, { ...record }]));
+  if (!validateState({ schemaVersion: 1, lastSuccessfulAt: null, candidates: previous, aliases })) throw new Error('invalid_alias_state');
+  const redirects = new Map(aliases.map((a) => [a.fromId, a.toId]));
   let added = 0; let updated = 0;
   for (const next of incoming) {
-    const same = records.get(next.id);
+    let id = next.id;
+    while (redirects.has(id)) id = redirects.get(id);
+    const same = records.get(id);
     if (!same) {
       records.set(next.id, next);
       added++;
@@ -60,20 +64,49 @@ function mergeCandidates(previous, incoming) {
     const evidence = [...same.evidence];
     let changed = false;
     for (const item of next.evidence) {
-      const index = evidence.findIndex((old) => canonicalUrl(old.url) === canonicalUrl(item.url));
+      const index = evidence.findIndex((old) => canonicalUrl(old.url) === canonicalUrl(item.url) &&
+        old.excerpt === item.excerpt && old.publicationDate === item.publicationDate &&
+        old.publisher === item.publisher && old.sourceType === item.sourceType && old.reference === item.reference);
       if (index >= 0) {
-        if (evidence[index].excerpt !== item.excerpt) changed = true;
-        evidence[index] = { ...evidence[index], excerpt: item.excerpt, checkedAt: item.checkedAt };
-      } else if (evidence.length < 12) { evidence.push(item); changed = true; }
+        evidence[index] = { ...evidence[index], checkedAt: new Date(Math.max(Date.parse(evidence[index].checkedAt), Date.parse(item.checkedAt))).toISOString() };
+      } else {
+        if (evidence.length >= 12) throw new Error('evidence_capacity_review_required');
+        evidence.push({ ...item }); changed = true;
+      }
     }
     const merged = {
-      ...same, evidence, lastCheckedAt: next.lastCheckedAt,
+      ...same, evidence,
+      firstSeenAt: Date.parse(same.firstSeenAt) <= Date.parse(next.firstSeenAt) ? same.firstSeenAt : next.firstSeenAt,
+      lastCheckedAt: Date.parse(same.lastCheckedAt) >= Date.parse(next.lastCheckedAt) ? same.lastCheckedAt : next.lastCheckedAt,
       ...(changed ? { review: null, verification: 'unverified', flags: [...new Set([...same.flags, 'conflicting'])] } : {}),
     };
     records.set(same.id, merged);
     updated++;
   }
   return { candidates: [...records.values()], added, updated };
+}
+
+function mergeReviewed(state, catalog, fromId, toId, reviewer, reason, now = new Date()) {
+  if (!validateState(state) || !validateCatalog(catalog) || fromId === toId ||
+    !text(reviewer, 80) || !text(reason, 1000) || reason.trim().length < 10) throw new Error('invalid_merge_review');
+  const source = state.candidates.find((r) => r.id === fromId);
+  const target = state.candidates.find((r) => r.id === toId);
+  if (!source || !target) throw new Error('merge_requires_two_current_candidates');
+  // Never retire an approved ID or silently rewrite the approved catalog.
+  if (catalog.records.some((r) => r.id === fromId)) throw new Error('approved_source_id_cannot_be_retired');
+  const alias = { fromId, toId, by: reviewer.trim(), reason: reason.trim(), at: now.toISOString(), source: structuredClone(source) };
+  const aliases = [...(state.aliases || []), alias];
+  const withoutSource = state.candidates.filter((r) => r.id !== fromId);
+  if (!validateState({ ...state, candidates: withoutSource, aliases })) throw new Error('incompatible_merge_scope');
+  const merged = mergeCandidates(withoutSource, [source], aliases);
+  // Even identical evidence needs explicit renewed claim review after identity reconciliation.
+  const candidates = merged.candidates.map((r) => r.id === toId ? {
+    ...r, review: null, verification: 'unverified',
+    flags: [...new Set([...r.flags, ...source.flags, 'conflicting'])],
+  } : r);
+  const result = { ...state, candidates, aliases };
+  if (!validateState(result)) throw new Error('invalid_merged_state');
+  return result;
 }
 
 async function runResearch(config, previous, {
@@ -171,7 +204,7 @@ async function runResearch(config, previous, {
       }
     } catch (error) { summary.sourceFailures.push({ source: 'search-provider', code: safeError(error) }); }
   }
-  const merged = mergeCandidates(previous.candidates, incoming);
+  const merged = mergeCandidates(previous.candidates, incoming, previous.aliases || []);
   const complete = !exhausted && summary.sourceFailures.length === 0 && summary.rejected === 0;
   summary.status = complete ? 'success' : incoming.length ? 'partial' : 'failed';
   summary.added = merged.added; summary.updated = merged.updated;
@@ -181,6 +214,7 @@ async function runResearch(config, previous, {
     summary,
     state: {
       schemaVersion: 1, lastSuccessfulAt: summary.lastSuccessfulAt,
+      ...(previous.aliases ? { aliases: previous.aliases } : {}),
       candidates: merged.candidates.map((record) => lifecycle(record, now, config.freshDays, config.cadence.timezone)),
     },
   };
@@ -205,4 +239,4 @@ function promote(state, catalog, id, reviewer, now = new Date()) {
     records: [...catalog.records.filter((item) => item.id !== id), approved],
   };
 }
-module.exports = { clean, unsafeInstructions, pageCandidates, draftRecord, mergeCandidates, runResearch, promote };
+module.exports = { clean, unsafeInstructions, pageCandidates, draftRecord, mergeCandidates, mergeReviewed, runResearch, promote };

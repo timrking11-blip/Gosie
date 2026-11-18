@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "24"
       - name: Validate public contracts and safety fixtures
-        run: node --test research/gosie/research.test.cjs artifacts/api-server/research-catalog.test.js
+        run: node --test research/gosie/*.test.cjs artifacts/api-server/research-catalog.test.js
       - name: Run only the explicitly activated public research
         env:
           GOSIE_RESEARCH_ACTIVATED: ${{ vars.GOSIE_RESEARCH_ACTIVATED }}

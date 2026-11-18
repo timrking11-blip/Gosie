@@ -102,6 +102,37 @@ function validateCatalog(value) {
     value.records.every((record) => validateRecord(record, true)) &&
     new Set(value.records.map((record) => record.id)).size === value.records.length;
 }
+// Aliases are private research-state decisions, never model/entity guesses or
+// approved-catalog fields. Full source snapshots preserve superseded claims.
+function validateState(state) {
+  if (!onlyKeys(state, ['schemaVersion', 'lastSuccessfulAt', 'candidates', 'aliases']) ||
+    state.schemaVersion !== VERSION || !(state.lastSuccessfulAt === null || timestamp(state.lastSuccessfulAt)) ||
+    !Array.isArray(state.candidates) || !state.candidates.every((r) => validateRecord(r)) ||
+    new Set(state.candidates.map((r) => r.id)).size !== state.candidates.length) return false;
+  const aliases = state.aliases || [];
+  if (!Array.isArray(aliases) || aliases.length > 2000) return false;
+  const ids = new Set(state.candidates.map((r) => r.id));
+  const redirects = new Map();
+  for (const a of aliases) {
+    if (!onlyKeys(a, ['fromId', 'toId', 'by', 'reason', 'at', 'source']) ||
+      !validateRecord(a.source) || a.fromId !== a.source.id ||
+      !/^experience-[a-f0-9]{24}$/.test(a.toId) || a.fromId === a.toId ||
+      !text(a.by, 80) || !text(a.reason, 1000) || a.reason.trim().length < 10 ||
+      !timestamp(a.at) || ids.has(a.fromId) || redirects.has(a.fromId)) return false;
+    redirects.set(a.fromId, a.toId);
+  }
+  for (const a of aliases) {
+    let id = a.toId;
+    const seen = new Set([a.fromId]);
+    while (redirects.has(id)) {
+      if (seen.has(id)) return false;
+      seen.add(id); id = redirects.get(id);
+    }
+    const target = state.candidates.find((r) => r.id === id);
+    if (!target || key(target.region) !== key(a.source.region) || target.category !== a.source.category) return false;
+  }
+  return true;
+}
 function configErrors(config) {
   const errors = [];
   if (config?.schemaVersion !== VERSION || config.repository !== 'timrking11-blip/Gosie') errors.push('unsupported configuration');
@@ -140,5 +171,5 @@ function isDue(config, lastSuccessfulAt, now = new Date()) {
 }
 module.exports = {
   VERSION, CATEGORIES, SOURCE_TYPES, publicUrl, canonicalUrl, identity, text, timestamp, date,
-  validateRecord, validateCatalog, materialDigest, lifecycle, configErrors, isDue,
+  validateRecord, validateCatalog, validateState, materialDigest, lifecycle, configErrors, isDue,
 };

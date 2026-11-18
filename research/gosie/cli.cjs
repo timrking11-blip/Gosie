@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
 const path = require('node:path');
-const { configErrors, validateRecord, validateCatalog, isDue } = require('./contract.cjs');
+const { configErrors, validateState, validateCatalog, isDue } = require('./contract.cjs');
 const { safeFetch } = require('./safe-fetch.cjs');
-const { runResearch, promote } = require('./pipeline.cjs');
+const { runResearch, promote, mergeReviewed } = require('./pipeline.cjs');
 const root = __dirname;
 const read = (name) => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
 function atomicWrite(file, value) {
@@ -16,8 +16,7 @@ async function main() {
   const config = read('config.json');
   const state = read('state.json');
   const catalog = read('approved.json');
-  if (state.schemaVersion !== 1 || !Array.isArray(state.candidates) ||
-    !state.candidates.every((record) => validateRecord(record)) || !validateCatalog(catalog)) {
+  if (!validateState(state) || !validateCatalog(catalog)) {
     throw new Error('Invalid state/catalog; nothing was written.');
   }
   if (command === 'check') {
@@ -28,10 +27,21 @@ async function main() {
     }, null, 2));
     return;
   }
-  if (!['run', 'promote'].includes(command)) throw new Error('Use check, run, or promote <id> <public-reviewer-label> --reviewed');
+  if (!['run', 'promote', 'merge'].includes(command)) throw new Error('Use check, run, promote or merge');
   const lock = path.join(root, '.run-lock');
   const handle = fs.openSync(lock, 'wx');
   try {
+    if (command === 'merge') {
+      const next = mergeReviewed(state, catalog, process.argv[3], process.argv[4], process.argv[5], process.argv[6]);
+      if (process.argv.includes('--reviewed')) {
+        atomicWrite(path.join(root, 'state.json'), next);
+        console.log('Merged candidate identities locally for repository review. Approved catalog unchanged; renewed claim review required.');
+      } else {
+        console.log(JSON.stringify({ dryRun: true, fromId: process.argv[3], retainedId: process.argv[4],
+          candidate: next.candidates.find((r) => r.id === process.argv[4]), decision: next.aliases.at(-1) }, null, 2));
+      }
+      return;
+    }
     if (command === 'promote') {
       if (!process.argv.includes('--reviewed')) throw new Error('Human review confirmation --reviewed required');
       const next = promote(state, catalog, process.argv[3], process.argv[4]);
