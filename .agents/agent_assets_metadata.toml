@@ -126,3 +126,31 @@ mtime_ms = 1795000614072
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/120a88ff-726d-4807-9dc8-2e2f0b132a9a/f9b8c956-05cb-41b5-a40f-5597db3832ff"
 storage_version_token = "1795000702710359"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "8F6lgnhkX37J9RnGz0hnw"
+uri = "file://docs/reviewed-discoveries-browser-check.md"
+type = "text"
+title = "Reviewed discoveries: browser verification"
+description = "Live Chromium results at three widths and two text sizes, isolated synthetic-data method, and explicit verification limits."
+logical_id = "ba324f2a-e1a7-4610-a001-1497cab8bea2"
+content_hash = "sha256:856b38617109419cb1cc9ab96ccceb31bca6c7f09cb37c0e97f581ee346884ad"
+size = 4155
+mtime_ms = 1795001296783
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/ba324f2a-e1a7-4610-a001-1497cab8bea2/eddd82cc-806e-4ffe-857e-8441fd4d7cba"
+storage_version_token = "1795001308518107"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "fRj3AJ2UJvMUi6gJq-ckj"
+uri = "file://generated-artifacts/discovery-browser-check/1280-1x.png"
+type = "image"
+title = "Reviewed discoveries — desktop fixture"
+description = "Actual app rendered in Chromium with synthetic session and catalog responses; not a live listing or real sign-in."
+logical_id = "9128ac7f-f82d-4785-a1dc-b2a2e4c46550"
+content_hash = "sha256:83268d7e02a220ca7a51913bd56e567a9216a3d5a4a50c02d7aa0665893cfaee"
+size = 172440
+mtime_ms = 1795001260068
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/9128ac7f-f82d-4785-a1dc-b2a2e4c46550/58a5eaef-af14-43f8-8b39-82789e3717bf"
+storage_version_token = "1795001308952225"
+content_type = "image/png"
