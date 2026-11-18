@@ -20,7 +20,7 @@ async function resolvePublic(hostname, lookup = dns.lookup) {
   if (!records.length || records.some((record) => !publicAddress(record.address))) throw new Error('blocked_network_address');
   return records[0];
 }
-async function safeFetch(value, { maxBytes = 262144, timeoutMs = 8000, headers = {}, lookup = dns.lookup } = {}) {
+async function safeFetch(value, { maxBytes = 262144, timeoutMs = 8000, headers = {}, lookup = dns.lookup, get = https.get } = {}) {
   const url = publicUrl(value);
   const started = Date.now();
   let dnsTimer;
@@ -32,7 +32,7 @@ async function safeFetch(value, { maxBytes = 262144, timeoutMs = 8000, headers =
     ]);
   } finally { clearTimeout(dnsTimer); }
   return new Promise((resolve, reject) => {
-    const request = https.get(url, {
+    const request = get(url, {
       headers: { 'User-Agent': 'GosieResearch/1.0', 'Accept-Encoding': 'identity', ...headers },
       // Pin the checked address: the transport must not do a second DNS lookup.
       lookup: (_host, options, callback) => options?.all

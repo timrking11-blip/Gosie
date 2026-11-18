@@ -127,7 +127,8 @@ async function runResearch(config, previous, {
   }
   // Recheck existing public evidence first, without changing the approved catalog.
   const targets = [
-    ...previous.candidates.map((record) => ({
+    ...previous.candidates.filter((record) => config.sources.some((source) =>
+      canonicalUrl(source.url) === canonicalUrl(record.evidence[0].url))).map((record) => ({
       source: { ...record.evidence[0], type: record.evidence[0].sourceType, url: record.evidence[0].url },
       category: record.category,
     })),
@@ -148,7 +149,8 @@ async function runResearch(config, previous, {
     const subject = { restaurant: 'restaurant openings announced newly open', exhibit: 'museum exhibition exhibit dates', experience: 'distinctive local culture tourism experiences' }[category];
     try {
       reserve(true);
-      const response = await search(`${config.region} ${subject}`, config.maxResponseBytes);
+      const response = await search(`${config.region} ${subject}`, config.maxResponseBytes,
+        Math.max(1, Math.min(8000, config.maxRunSeconds * 1000 - (Date.now() - started))));
       for (const item of response.slice(0, 8)) {
         if (incoming.length >= config.maxCandidates) break;
         try {
@@ -189,7 +191,8 @@ function safeError(error) {
     /^source_http_\d{3}$/.test(error.message) ? error.message : 'source_failed';
 }
 function promote(state, catalog, id, reviewer, now = new Date()) {
-  const record = state.candidates.find((candidate) => candidate.id === id);
+  const candidate = state.candidates.find((candidate) => candidate.id === id);
+  const record = candidate && lifecycle(candidate, now, 14);
   if (!record || !text(reviewer, 80) || !validateRecord(record) || record.verification !== 'source-supported' ||
     record.status === 'unknown' || record.flags.some((flag) => ['conflicting', 'date-review', 'stale'].includes(flag))) {
     throw new Error('review_required: resolve identity, evidence, dates, verification and flags before promotion');

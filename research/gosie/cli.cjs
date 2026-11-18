@@ -48,11 +48,11 @@ async function main() {
     const activated = process.env.GOSIE_RESEARCH_ACTIVATED === '1';
     // This environment variable is reserved for the approved repository runner,
     // never a VITE_ variable or a browser credential. No credential is logged.
-    const search = process.env.BRAVE_SEARCH_API_KEY ? async (query, maxBytes) => {
+    const search = process.env.BRAVE_SEARCH_API_KEY ? async (query, maxBytes, timeoutMs) => {
       const url = new URL('https://api.search.brave.com/res/v1/web/search');
       url.searchParams.set('q', query); url.searchParams.set('count', '8');
       const result = await safeFetch(url.href, {
-        maxBytes, headers: { 'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY, Accept: 'application/json' },
+        maxBytes, timeoutMs, headers: { 'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY, Accept: 'application/json' },
       });
       const data = JSON.parse(result.text);
       return Array.isArray(data.web?.results) ? data.web.results : [];

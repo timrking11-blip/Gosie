@@ -76,6 +76,18 @@ owned records and never link carry-over IDs to existing users' records.
 Do not collect real participant data, enable public registration, publish, invite
 users, or claim pilot readiness until those checks and approvals are complete.
 
+## Reviewed public research (disabled-by-default runner)
+
+`GET /api/discoveries` requires an authenticated session and reads only the
+validated repository-approved catalog, without startup writes. The initial
+catalog is empty. This is distinct from community submissions and fictional
+ranked recommendations. Unknown price/travel/availability values remain null
+and are never fed into numeric preference constraints.
+
+See `research/gosie/README.md` at the repository root for configuration, explicit
+activation gates, bounded execution, review/promotion and limitations. No source
+or provider has been enabled, and no live or scheduled research has run.
+
 ## Communities (development implementation)
 
 Communities is a separate, moderated contributor source. The 16 existing

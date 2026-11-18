@@ -180,6 +180,21 @@ test('health and security headers are available over the API', async () => {
   assert.equal(response.json.database, 'postgres');
 });
 
+test('research catalog requires a session and exposes only the approved contract', async () => {
+  assert.equal((await call(primary.port, 'GET', '/discoveries')).status, 401);
+  const user = await makeUser(primary.port);
+  try {
+    const result = await call(primary.port, 'GET', '/discoveries', { cookie: user.cookie });
+    assert.equal(result.status, 200);
+    assert.equal(result.json.schemaVersion, 1);
+    assert.ok(Array.isArray(result.json.records));
+    assert.equal(result.json.candidates, undefined);
+  } finally {
+    // Do not occupy a place in the existing five-account enrollment test.
+    await testPool.query('DELETE FROM gosie_users WHERE id=$1', [user.id]);
+  }
+});
+
 test('registration is closed unless explicitly enabled and requires consent', async () => {
   const closed = await start({ PILOT_SIGNUPS_ENABLED: '0' });
   try {
