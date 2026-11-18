@@ -1,6 +1,7 @@
 - [Migration environment](migration-environment.md) — failed auto-scaffolding can leave artifact packages without a workspace root; testing helper availability differs from its skill.
 - [Post-merge service environment](post-merge-service-env.md) — standalone setup scripts may need to load required `PORT` and `BASE_PATH` values from the artifact manifest.
 - [Gosie promo playback](gosie-promo-playback.md) — show a poster-first play control; an idle video surface can cover the poster with a loader.
+- [Gosie mobile promo scope](gosie-promo-scope.md) — match the website video; add subtitles only, without changing the main website.
 - [Deployment runtime guard](deployment-runtime-guard.md) — use the documented deployment flag, not the platform environment label, for dev/test safety gates.
 - [Gosie discovery sources](gosie-discovery-sources.md) — keep Eventbrite and public web search distinct from the private Muse/Ticketmaster reference.
 - [Gosie Communities purpose](gosie-communities-purpose.md) — people first; organizations contribute useful local knowledge, not an advertising directory.

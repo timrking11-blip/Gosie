@@ -7,9 +7,19 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const workspace = path.resolve(here, "../..");
 const htmlPath = path.join(here, "render.html");
-const outputDir = path.join(workspace, "generated-artifacts/gosie-video-frames");
-const silentOutputPath = path.join(workspace, "generated-artifacts/gosie-promo.mp4");
-const narratedOutputPath = path.join(workspace, "generated-artifacts/gosie-promo-narrated.mp4");
+const portrait = process.argv.includes("--portrait");
+const width = portrait ? 1080 : 1280;
+const height = portrait ? 1920 : 720;
+const format = portrait ? "portrait" : "landscape";
+const outputDir = path.join(workspace, `generated-artifacts/gosie-video-${format}-frames`);
+const silentOutputPath = path.join(
+  workspace,
+  `generated-artifacts/gosie-promo${portrait ? "-portrait" : ""}.mp4`,
+);
+const narratedOutputPath = path.join(
+  workspace,
+  `generated-artifacts/gosie-promo${portrait ? "-portrait" : ""}-narrated.mp4`,
+);
 const fps = 24;
 const duration = 18.5;
 const frameCount = Math.round(fps * duration);
@@ -112,12 +122,12 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Page.setDeviceMetricsOverride", {
-    width: 1280,
-    height: 720,
+    width,
+    height,
     deviceScaleFactor: 1,
     mobile: false,
   });
-  await send("Page.navigate", { url: `file://${htmlPath}` });
+  await send("Page.navigate", { url: `file://${htmlPath}?format=${format}` });
   await sleep(1200);
 
   const fontResult = await send("Runtime.evaluate", {
@@ -180,7 +190,7 @@ const ffmpegArgs = [
   silentOutputPath,
 ];
 await runFfmpeg(ffmpegArgs);
-console.log(`Exported silent promo ${silentOutputPath} (${duration}s, 1280x720, ${fps}fps)`);
+console.log(`Exported silent promo ${silentOutputPath} (${duration}s, ${width}x${height}, ${fps}fps)`);
 
 const narrationDir = await mkdtemp(path.join(tmpdir(), "gosie-promo-narration-"));
 try {

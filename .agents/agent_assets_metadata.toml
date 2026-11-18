@@ -86,18 +86,18 @@ storage_version_token = "1794997532012904"
 content_type = "text/markdown"
 
 [[outputs]]
-id = "Je9f_Dmj9D5p1V1UTuoVW"
-uri = "file://docs/google-calendar-pilot-implementation-prompt.md"
-type = "text"
-title = "Gosie Pilot — Ordered Implementation Prompt"
-description = "Seven gated stages, from approved contracts through provider testing and hosted launch evidence. No stage is authorized by this document alone."
-logical_id = "6c94abc9-a1c6-4cfe-8d44-94bf13807628"
-content_hash = "sha256:e731c7ade02085d3976f6afdf8fbe40f4c365c07ddb64bbaf4b7e274a7ef3239"
-size = 9998
-mtime_ms = 1794997437676
-storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/6c94abc9-a1c6-4cfe-8d44-94bf13807628/55752629-b7f0-4dfc-b156-42f19c37256a"
-storage_version_token = "1794997532411006"
-content_type = "text/markdown"
+id = "7_QOK-vBGxixq70bDAVU3"
+uri = "file://generated-artifacts/gosie-promo-portrait.mp4"
+type = "video"
+title = "Gosie portrait promo"
+description = "Silent 9:16 Gosie promo for mobile feeds (1080×1920, 18.5 seconds)."
+logical_id = "45a30db7-6f13-452d-b26f-6a878fc5e9dc"
+content_hash = "sha256:1131a10bea554e5d30c57d7c0acaea6c81b912d7f3cc80c6b8e3d48aba8ec1a3"
+size = 1977822
+mtime_ms = 1794997243591
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/45a30db7-6f13-452d-b26f-6a878fc5e9dc/520b4a98-a2c3-4347-b8c5-ff34e53d75fa"
+storage_version_token = "1794997279322289"
+content_type = "video/mp4"
 
 [[outputs]]
 id = "QyjMfMgA-uhyIaRzQdIE4"
@@ -142,6 +142,20 @@ storage_version_token = "1795001308518107"
 content_type = "text/markdown"
 
 [[outputs]]
+id = "Je9f_Dmj9D5p1V1UTuoVW"
+uri = "file://docs/google-calendar-pilot-implementation-prompt.md"
+type = "text"
+title = "Gosie Pilot — Ordered Implementation Prompt"
+description = "Seven gated stages, from approved contracts through provider testing and hosted launch evidence. No stage is authorized by this document alone."
+logical_id = "6c94abc9-a1c6-4cfe-8d44-94bf13807628"
+content_hash = "sha256:e731c7ade02085d3976f6afdf8fbe40f4c365c07ddb64bbaf4b7e274a7ef3239"
+size = 9998
+mtime_ms = 1794997437676
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/6c94abc9-a1c6-4cfe-8d44-94bf13807628/55752629-b7f0-4dfc-b156-42f19c37256a"
+storage_version_token = "1794997532411006"
+content_type = "text/markdown"
+
+[[outputs]]
 id = "fRj3AJ2UJvMUi6gJq-ckj"
 uri = "file://generated-artifacts/discovery-browser-check/1280-1x.png"
 type = "image"
@@ -154,3 +168,31 @@ mtime_ms = 1795001260068
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/9128ac7f-f82d-4785-a1dc-b2a2e4c46550/58a5eaef-af14-43f8-8b39-82789e3717bf"
 storage_version_token = "1795001308952225"
 content_type = "image/png"
+
+[[outputs]]
+id = "7cDhANRvu-yhOc6Khi6D4"
+uri = "file://generated-artifacts/gosie-website-promo-subtitled.mp4"
+type = "video"
+title = "Gosie mobile promo — website clip with subtitles"
+description = "The existing website video with English subtitles only. Same scenes, aspect ratio, duration, and original audio; the website itself is unchanged."
+logical_id = "30e3cb46-fbd3-49eb-940e-fec19e737992"
+content_hash = "sha256:a1422be0b01f706ade7f0885d95a72abca426232717091093fb581221d461f2e"
+size = 1668709
+mtime_ms = 1795000661542
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/30e3cb46-fbd3-49eb-940e-fec19e737992/b1795265-8730-4d17-a586-ec6d4a2a22f1"
+storage_version_token = "1795000766225560"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "cojc6VSkzjomMticRUjaQ"
+uri = "file://generated-artifacts/gosie-promo-portrait-narrated.mp4"
+type = "video"
+title = "Gosie portrait promo with narration"
+description = "Narrated 9:16 Gosie promo for mobile feeds (1080×1920, 18.5 seconds)."
+logical_id = "48dde1b7-937c-4f46-89a6-f53e772d30ad"
+content_hash = "sha256:d9ae0d3ba262839d70496756022d30f6e82346f85046c6b83a71d2f4ecc61978"
+size = 2128534
+mtime_ms = 1794997244266
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/48dde1b7-937c-4f46-89a6-f53e772d30ad/55170124-f02c-47f1-8fe2-d8b02bf6b5c6"
+storage_version_token = "1794997279809578"
+content_type = "video/mp4"
