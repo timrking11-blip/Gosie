@@ -14,6 +14,7 @@ if (process.env.GOSIE_DB_ENV !== 'test' || process.env.REPLIT_DEPLOYMENT === '1'
 const { pool: testPool } = require('./db');
 const testRateSecret = randomUUID();
 const registeredIds = new Set();
+const createdDiscoveryIds = new Set();
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -163,6 +164,9 @@ before(async () => {
 after(async () => {
   try {
     await stop(primary);
+    for (const id of createdDiscoveryIds) {
+      await testPool.query('DELETE FROM gosie_week_ahead_discoveries WHERE id=$1', [id]);
+    }
     for (const id of registeredIds) await testPool.query('DELETE FROM gosie_users WHERE id=$1', [id]);
     for (const ip of ['127.0.0.1', '::ffff:127.0.0.1', '198.51.100.81', '198.51.100.82']) {
       const fingerprint = createHmac('sha256', testRateSecret).update(ip).digest('hex');
@@ -180,6 +184,95 @@ test('health and security headers are available over the API', async () => {
   assert.equal(response.headers['cache-control'], 'no-store');
   assert.equal(response.headers['x-frame-options'], 'DENY');
   assert.equal(response.json.database, 'postgres');
+});
+
+test('Week Ahead reviewed leads require moderator access, CSRF, and a second reviewer', async () => {
+  const creator = await makeUser(primary.port);
+  const reviewer = await makeUser(primary.port);
+  const visitor = await makeUser(primary.port);
+  await testPool.query(
+    "INSERT INTO gosie_community_roles(user_id,role) VALUES ($1,'moderator'),($2,'moderator')",
+    [creator.id, reviewer.id],
+  );
+  const base = '/week-ahead/discoveries';
+  const review = `${base}/review`;
+  const publicList = () => call(primary.port, 'GET', base);
+  const draft = {
+    title: 'Synthetic automated-test discovery lead',
+    venue: 'Synthetic fixture venue',
+    region: 'Synthetic test region',
+    startsAt: null,
+    price: { label: 'Price', value: null, status: 'unknown' },
+    travel: { label: 'Travel', value: 'About 20 minutes', status: 'estimated' },
+    accessibility: { label: 'Accessibility', value: null, status: 'unknown' },
+    availability: { label: 'Availability', value: null, status: 'unknown' },
+    publisher: 'Synthetic test source',
+    sourceUrl: 'https://www.metmuseum.org/events',
+    retrievedAt: '2026-11-18T12:00:00.000Z',
+    whyIncluded: 'Synthetic record used only to verify the private moderator workflow.',
+  };
+  const auth = (user) => ({ cookie: user.cookie, csrf: user.csrf });
+  assert.equal((await call(primary.port, 'GET', review)).status, 401);
+  assert.equal((await call(primary.port, 'GET', review, { cookie: visitor.cookie })).status, 403);
+  assert.equal((await call(primary.port, 'POST', review, { ...auth(creator), body: draft })).status, 403);
+  assert.equal((await call(primary.port, 'POST', review, { ...auth(creator), body: {
+    ...draft, sourceUrl: 'http://127.0.0.1/private',
+  } })).status, 400);
+  assert.equal((await call(primary.port, 'POST', review, { ...auth(creator), body: {
+    ...draft, price: { label: 'Price', value: '$10', status: 'unknown' },
+  } })).status, 400);
+
+  const created = await call(primary.port, 'POST', review, { ...auth(creator), body: draft });
+  assert.equal(created.status, 201);
+  const id = created.json.entry.id;
+  createdDiscoveryIds.add(id);
+  assert.equal(created.json.entry.status, 'draft');
+  assert.equal(created.json.entry.canApprove, false);
+  assert.equal((await publicList()).json.entries.length, 0);
+  assert.equal((await call(primary.port, 'GET', review, { cookie: visitor.cookie })).status, 403);
+  assert.equal((await call(primary.port, 'POST', `${review}/${id}/approve`, {
+    ...auth(creator), body: { version: created.json.entry.version },
+  })).status, 403);
+
+  const approved = await call(primary.port, 'POST', `${review}/${id}/approve`, {
+    ...auth(reviewer), body: { version: created.json.entry.version },
+  });
+  assert.equal(approved.status, 200);
+  assert.equal(approved.json.entry.status, 'approved');
+  const publicApproved = await publicList();
+  assert.equal(publicApproved.status, 200);
+  assert.equal(publicApproved.json.entries.length, 1);
+  assert.equal(publicApproved.json.entries[0].title, draft.title);
+  assert.equal(Object.hasOwn(publicApproved.json.entries[0], 'createdBy'), false);
+
+  const edited = await call(primary.port, 'PUT', `${review}/${id}`, {
+    ...auth(reviewer), body: { ...draft, title: 'Edited synthetic test lead', version: approved.json.entry.version },
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.json.entry.status, 'draft');
+  assert.equal((await publicList()).json.entries.length, 0);
+  assert.equal((await call(primary.port, 'POST', `${review}/${id}/approve`, {
+    ...auth(reviewer), body: { version: edited.json.entry.version },
+  })).status, 403);
+  assert.equal((await call(primary.port, 'PUT', `${review}/${id}`, {
+    ...auth(creator), body: { ...draft, version: approved.json.entry.version },
+  })).status, 409);
+  const reapproved = await call(primary.port, 'POST', `${review}/${id}/approve`, {
+    ...auth(creator), body: { version: edited.json.entry.version },
+  });
+  assert.equal(reapproved.status, 200);
+  assert.equal((await publicList()).json.entries[0].title, 'Edited synthetic test lead');
+
+  const withdrawn = await call(primary.port, 'POST', `${review}/${id}/withdraw`, {
+    ...auth(reviewer), body: { version: reapproved.json.entry.version },
+  });
+  assert.equal(withdrawn.status, 200);
+  assert.equal(withdrawn.json.entry.status, 'withdrawn');
+  assert.equal((await publicList()).json.entries.length, 0);
+  const history = await testPool.query(
+    'SELECT action FROM gosie_week_ahead_discovery_history WHERE discovery_id=$1 ORDER BY id', [id],
+  );
+  assert.deepEqual(history.rows.map((row) => row.action), ['created', 'approved', 'edited', 'approved', 'withdrawn']);
 });
 
 test('research catalog requires a session and exposes only the approved contract', async () => {

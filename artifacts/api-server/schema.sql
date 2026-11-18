@@ -143,6 +143,42 @@ CREATE INDEX IF NOT EXISTS gosie_community_items_feed_idx ON gosie_community_ite
 CREATE INDEX IF NOT EXISTS gosie_community_items_owner_idx ON gosie_community_items(user_id);
 CREATE INDEX IF NOT EXISTS gosie_community_comments_item_idx ON gosie_community_comments(item_id, status);
 
+-- Curated public-source leads are distinct from user submissions and demo
+-- recommendations. Drafts/withdrawals remain private to moderators.
+CREATE TABLE IF NOT EXISTS gosie_week_ahead_discoveries (
+  id TEXT PRIMARY KEY,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved','withdrawn')),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  created_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  updated_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  approved_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  approved_at TIMESTAMPTZ,
+  withdrawn_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  withdrawn_at TIMESTAMPTZ,
+  CHECK (jsonb_typeof(payload) = 'object'),
+  CHECK ((status = 'approved' AND approved_by IS NOT NULL AND approved_at IS NOT NULL)
+      OR (status <> 'approved' AND approved_by IS NULL AND approved_at IS NULL)),
+  CHECK ((status = 'withdrawn' AND withdrawn_by IS NOT NULL AND withdrawn_at IS NOT NULL)
+      OR (status <> 'withdrawn' AND withdrawn_by IS NULL AND withdrawn_at IS NULL))
+);
+CREATE INDEX IF NOT EXISTS gosie_week_ahead_discoveries_public_idx
+  ON gosie_week_ahead_discoveries(status, updated_at DESC);
+CREATE TABLE IF NOT EXISTS gosie_week_ahead_discovery_history (
+  id BIGSERIAL PRIMARY KEY,
+  discovery_id TEXT NOT NULL REFERENCES gosie_week_ahead_discoveries(id) ON DELETE CASCADE,
+  actor_user_id TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL CHECK (action IN ('created','edited','approved','withdrawn')),
+  version INTEGER NOT NULL CHECK (version > 0),
+  snapshot JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (jsonb_typeof(snapshot) = 'object')
+);
+CREATE INDEX IF NOT EXISTS gosie_week_ahead_discovery_history_idx
+  ON gosie_week_ahead_discovery_history(discovery_id, created_at DESC);
+
 -- Nullable for pre-existing decisions; never fabricate a historical reason.
 -- Only private contributor/moderator responses may expose these fields.
 ALTER TABLE gosie_community_items ADD COLUMN IF NOT EXISTS decision_reason TEXT

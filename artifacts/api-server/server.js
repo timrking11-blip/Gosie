@@ -1,6 +1,7 @@
 const http = require('node:http');
 const { pool } = require('./db');
 const { handleCommunity } = require('./community');
+const { handleWeekAheadDiscoveries } = require('./week-ahead-discoveries');
 const { demoProfiles, makeDemoWeek, currentWeekStart, addDays } = require('./demo-data');
 const { rankWeekend, validSocial } = require('./weekend-engine');
 const { readApprovedCatalog } = require('./research-catalog');
@@ -361,6 +362,7 @@ function createApiHandler() {
 
       const session = await sessionOf(req);
       if (await handleCommunity({ req, res, path, url: parsedUrl, body, session, send })) return;
+      if (await handleWeekAheadDiscoveries({ req, res, path, body, session, send })) return;
       if (req.method === 'GET' && path === '/auth/session') {
         if (!session) return send(res, 200, { authenticated: false });
         return send(res, 200, {

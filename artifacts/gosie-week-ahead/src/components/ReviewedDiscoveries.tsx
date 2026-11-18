@@ -1,10 +1,7 @@
-import { Info, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Info, RotateCw, ShieldCheck } from 'lucide-react';
 import { parseReviewedDiscoveries, type EvidenceField, type ReviewedDiscovery } from '../lib/reviewed-discoveries';
-
-// Empty until Gosie owners configure entries that have been independently reviewed.
-// Never fill this list from organizer credentials, scraping or fictional samples.
-const configuredEntries: unknown = [];
-const entries = parseReviewedDiscoveries(configuredEntries);
+import ReviewedDiscoveriesManager from './ReviewedDiscoveriesManager';
 
 function Fact({ field }: { field: EvidenceField }) {
   const state = field.status === 'verified' ? 'Verified at source' :
@@ -33,10 +30,30 @@ function DiscoveryCard({ entry }: { entry: ReviewedDiscovery }) {
 }
 
 export default function ReviewedDiscoveries() {
-  if (entries === null) return <section className="reviewed-discoveries" aria-labelledby="reviewed-discoveries-heading">
-    <h3 id="reviewed-discoveries-heading">Reviewed public-source leads</h3>
-    <p role="alert">The saved discovery list could not be checked. No live search was attempted.</p>
-  </section>;
+  const [entries, setEntries] = useState<ReviewedDiscovery[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [truncated, setTruncated] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/week-ahead/discoveries', {
+        credentials: 'same-origin', cache: 'no-store',
+      });
+      if (!response.ok) throw new Error('unavailable');
+      const payload = await response.json();
+      const checked = parseReviewedDiscoveries(payload?.entries);
+      if (!checked) throw new Error('invalid');
+      setEntries(checked);
+      setTruncated(payload.truncated === true);
+    } catch {
+      setEntries(null);
+      setError('Reviewed public-source leads could not be checked. No sample ideas were substituted.');
+    } finally { setLoading(false); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
   return <section className="reviewed-discoveries" aria-labelledby="reviewed-discoveries-heading">
     <div className="reviewed-discoveries-heading">
       <div><span className="section-kicker">Separate from the sample ideas</span>
@@ -44,10 +61,19 @@ export default function ReviewedDiscoveries() {
       <ShieldCheck size={20} aria-hidden="true" />
     </div>
     <p className="reviewed-discoveries-disclosure"><Info size={16} aria-hidden="true" />
-      <span>Live public search is not connected. This page sends no location or dates to a provider. Only independently reviewed entries configured by Gosie can appear here. It does not use organizer-only records, scrape websites, or verify ticket availability.</span>
+      <span>Live search is not connected. Only source-backed entries independently reviewed by Gosie moderators can appear here. Gosie does not scrape websites, use organizer-only records, or verify ticket availability. Public listings show their source and retrieval time; unknown facts stay unknown.</span>
     </p>
-    {entries.length
+    {loading && <p role="status">Checking reviewed public sources…</p>}
+    {!loading && error && <div className="reviewed-discoveries-error" role="alert"><span>{error}</span><button type="button" onClick={() => void load()}><RotateCw size={15} aria-hidden="true" />Retry</button></div>}
+    {!loading && !error && entries?.length
       ? <div className="reviewed-discovery-grid">{entries.map((entry) => <DiscoveryCard key={entry.id} entry={entry} />)}</div>
-      : <p className="reviewed-discoveries-empty" role="status">No reviewed source-backed discoveries are configured for this preview yet. This section is empty until Gosie adds approved entries; the fictional examples below remain separate.</p>}
+      : !loading && !error && <p className="reviewed-discoveries-empty" role="status">No reviewed source-backed discoveries have been approved yet. The fictional examples below remain separate.</p>}
+    {truncated && !error && <p role="status">Only the first 100 reviewed leads are shown.</p>}
+    <div className="reviewed-discoveries-moderator">
+      <button type="button" aria-expanded={managerOpen} onClick={() => setManagerOpen((open) => !open)}>
+        {managerOpen ? 'Close moderator tools' : 'Moderator tools'}
+      </button>
+      <ReviewedDiscoveriesManager open={managerOpen} onPublicChanged={() => void load()} />
+    </div>
   </section>;
 }
