@@ -179,7 +179,7 @@ export default function WeekendScreen() {
           <View style={styles.limitPanel}>
             <Text style={styles.limitHeading}>Try sample limits</Text>
             <Text style={styles.limitLabel}>Budget cap · illustrative</Text>
-            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample budget cap">
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample budget cap, choose one option">
               {budgetOptions.map((option) => {
                 const selected = budgetLimit === option.value;
                 return (
@@ -187,8 +187,8 @@ export default function WeekendScreen() {
                     key={option.label}
                     onPress={() => setBudgetLimit(option.value)}
                     accessibilityRole="radio"
-                    accessibilityLabel={`${option.label} sample budget cap`}
-                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Budget cap: ${option.label}`}
+                    accessibilityState={{ checked: selected, selected }}
                     style={[styles.limitOption, selected && styles.limitOptionSelected]}
                   >
                     <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{option.label}</Text>
@@ -197,7 +197,7 @@ export default function WeekendScreen() {
               })}
             </View>
             <Text style={styles.limitLabel}>Travel cap · illustrative</Text>
-            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample travel cap">
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample travel cap, choose one option">
               {travelOptions.map((minutes) => {
                 const selected = travelLimit === minutes;
                 return (
@@ -205,8 +205,8 @@ export default function WeekendScreen() {
                     key={minutes}
                     onPress={() => setTravelLimit(minutes)}
                     accessibilityRole="radio"
-                    accessibilityLabel={`Up to ${minutes} minutes sample travel cap`}
-                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Travel cap: up to ${minutes} minutes`}
+                    accessibilityState={{ checked: selected, selected }}
                     style={[styles.limitOption, selected && styles.limitOptionSelected]}
                   >
                     <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{minutes} min</Text>
@@ -315,11 +315,11 @@ const styles = StyleSheet.create({
   limitHeading: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 12 },
   limitLabel: { color: C.mutedForeground, fontFamily: 'Manrope_600SemiBold', fontSize: 10, marginTop: 10, marginBottom: 6 },
   limitOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  limitOption: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, backgroundColor: C.cream },
+  limitOption: { maxWidth: '100%', minHeight: 44, flexShrink: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, backgroundColor: C.cream },
   limitOptionSelected: { borderColor: C.forest, backgroundColor: C.forest },
-  limitOptionText: { color: C.mutedForeground, fontFamily: 'Manrope_700Bold', fontSize: 11 },
+  limitOptionText: { flexShrink: 1, color: C.mutedForeground, fontFamily: 'Manrope_700Bold', fontSize: 11, textAlign: 'center' },
   limitOptionTextSelected: { color: C.cream },
-  limitNote: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, lineHeight: 14, marginTop: 10 },
+  limitNote: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, marginTop: 10 },
   preferenceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 9 },
   preference: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, backgroundColor: C.secondary, paddingHorizontal: 8, paddingVertical: 7 },
   preferenceText: { color: C.forest, fontFamily: 'Manrope_600SemiBold', fontSize: 9 },
