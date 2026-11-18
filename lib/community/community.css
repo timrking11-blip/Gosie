@@ -55,7 +55,7 @@
 .gc-form { display: grid; gap: 12px; max-width: 720px; padding: 18px; border: 1px solid var(--gc-line); border-radius: 18px; background: var(--gc-card); }
 .gc-form-tight { padding: 12px; border-radius: 12px; }
 .gc-form label { display: grid; gap: 6px; min-width: 0; color: var(--gc-muted); font-size: 12px; font-weight: 750; }
-.gc-form input:not([type=radio]), .gc-form textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--gc-line); border-radius: 10px; background: var(--gc-paper); color: var(--gc-ink); font: 14px inherit; font-family: inherit; }
+.gc-form input:not([type=radio]), .gc-form select, .gc-form textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--gc-line); border-radius: 10px; background: var(--gc-paper); color: var(--gc-ink); font: 14px inherit; font-family: inherit; }
 .gc-form textarea { resize: vertical; }
 .gc-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
 .gc-kind-pick { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }

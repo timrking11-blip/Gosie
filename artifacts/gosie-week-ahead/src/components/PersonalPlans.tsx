@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { TimeSelect } from '@workspace/community/time';
 
 export type PersonalPlan = {
   id: string;
@@ -160,7 +161,7 @@ export default function PersonalPlans() {
       <label>Plan title<input autoFocus required maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
       <div className="personal-plan-form-row">
         <label>Date<input type="date" required value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-        <label>Time<input type="time" required value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
+        <label>Time<TimeSelect required value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
         <label>Kind<select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as PersonalPlan['category'] })}>
           {categories.map((category) => <option key={category}>{category}</option>)}
         </select></label>

@@ -71,6 +71,25 @@ describe("shared Gosie web and Week Ahead Communities", () => {
     expect(await screen.findByText("Awaiting review")).toBeInTheDocument();
     expect(screen.getByText("Nothing approved yet.")).toBeInTheDocument();
   });
+  it("submits event dates and quarter-hour selections as valid timezone-aware timestamps", async () => {
+    signedIn = true; roles = ["contributor"];
+    render(<CommunityPanel />);
+    await screen.findByLabelText("Starts date");
+    for (const [label, value] of [["Title", "Quarter-hour event"], ["Where", "Test hall"],
+      ["What makes it worth knowing", "Synthetic time test"], ["Credit it to", "Test contributor"],
+      ["Starts date", "2035-01-02"], ["Ends date", "2035-01-02"], ["Starts time", "18:15"], ["Ends time", "19:45"]]) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Send for review" }));
+    await screen.findByText("Thanks — your suggestion is waiting for review.");
+    const start = new Date(writes[0].body.startsAt as string);
+    const end = new Date(writes[0].body.endsAt as string);
+    expect(start.getHours()).toBe(18);
+    expect(start.getMinutes()).toBe(15);
+    expect(end.getHours()).toBe(19);
+    expect(end.getMinutes()).toBe(45);
+    expect(writes[0].body.startsAt).toMatch(/Z$/);
+  });
   it("moderator decisions use CSRF and refresh the approved feed separately from the queue", async () => {
     signedIn = true; roles = ["moderator"]; queue = [item({ status: "pending" })];
     render(<CommunityPanel />);

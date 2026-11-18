@@ -5,6 +5,7 @@ import {
 } from "./api";
 import type { CommunityComment, CommunityDraft, CommunityItem, CommunityMine } from "./api";
 import "./community.css";
+import { TimeSelect, localEventIso } from "./TimeSelect";
 
 type Session = { authenticated: boolean; user?: { email?: string } | null; csrfToken?: string };
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
@@ -94,7 +95,7 @@ function ItemCard({ item, footer, showStatus }: { item: CommunityItem; footer?: 
   </article>;
 }
 
-const blankDraft = { kind: "event" as CommunityItem["kind"], title: "", description: "", location: "", attribution: "", sourceUrl: "", startsAt: "", endsAt: "" };
+const blankDraft = { kind: "event" as CommunityItem["kind"], title: "", description: "", location: "", attribution: "", sourceUrl: "", startDate: "", startTime: "", endDate: "", endTime: "" };
 
 function SubmitForm({ apiBase, onDone }: { apiBase: string; onDone: (msg: string) => void }) {
   const [d, setD] = useState(blankDraft);
@@ -103,13 +104,20 @@ function SubmitForm({ apiBase, onDone }: { apiBase: string; onDone: (msg: string
   const set = (k: keyof typeof blankDraft) => (e: { target: { value: string } }) => setD((p) => ({ ...p, [k]: e.target.value }));
   async function submit(e: FormEvent) {
     e.preventDefault(); setError("");
+    let startsAt: string | null = null;
+    let endsAt: string | null = null;
+    if (d.kind === "event") {
+      try { startsAt = localEventIso(d.startDate, d.startTime); endsAt = localEventIso(d.endDate, d.endTime); }
+      catch (error) { setError(errText(error, "Choose valid start and end dates and times.")); return; }
+      if (endsAt <= startsAt) { setError("The end time needs to be after the start time. For an overnight event, choose the following end date."); return; }
+      if (Date.parse(endsAt) <= Date.now()) { setError("Choose an event that ends in the future."); return; }
+    }
     const draft: CommunityDraft = {
       kind: d.kind, title: d.title.trim(), description: d.description.trim(), location: d.location.trim(), attribution: d.attribution.trim(),
       sourceUrl: d.sourceUrl.trim() || undefined,
-      startsAt: d.kind === "event" && d.startsAt ? new Date(d.startsAt).toISOString() : null,
-      endsAt: d.kind === "event" && d.endsAt ? new Date(d.endsAt).toISOString() : null,
+      startsAt,
+      endsAt,
     };
-    if (d.kind === "event" && draft.startsAt && draft.endsAt && draft.endsAt <= draft.startsAt) { setError("The end time needs to be after the start time."); return; }
     setBusy(true);
     try { await write<{ item: CommunityItem }>("/community/items", draft, apiBase); setD(blankDraft); onDone("Thanks — your suggestion is waiting for review."); }
     catch (err) { setError(errText(err, "Your suggestion couldn't be sent.")); }
@@ -122,10 +130,17 @@ function SubmitForm({ apiBase, onDone }: { apiBase: string; onDone: (msg: string
     <label>Title<input required maxLength={120} value={d.title} onChange={set("title")} /></label>
     <label>Where<input required maxLength={160} value={d.location} onChange={set("location")} placeholder="Venue and neighbourhood" /></label>
     <label>What makes it worth knowing<textarea required maxLength={800} rows={3} value={d.description} onChange={set("description")} /></label>
-    {d.kind === "event" && <div className="gc-row">
-      <label>Starts<input type="datetime-local" required value={d.startsAt} onChange={set("startsAt")} /></label>
-      <label>Ends<input type="datetime-local" required value={d.endsAt} onChange={set("endsAt")} /></label>
-    </div>}
+    {d.kind === "event" && <>
+      <p className="gc-fine">Choose times in 15-minute increments. Times use your device timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}. If the venue is in another timezone, convert to this timezone before submitting.</p>
+      <div className="gc-row">
+        <label>Starts date<input type="date" required value={d.startDate} onChange={set("startDate")} /></label>
+        <label>Starts time<TimeSelect required value={d.startTime} onChange={set("startTime")} /></label>
+      </div>
+      <div className="gc-row">
+        <label>Ends date<input type="date" required value={d.endDate} onChange={set("endDate")} /></label>
+        <label>Ends time<TimeSelect required value={d.endTime} onChange={set("endTime")} /></label>
+      </div>
+    </>}
     <div className="gc-row">
       <label>Credit it to<input required maxLength={80} value={d.attribution} onChange={set("attribution")} placeholder="Your name or group, shown publicly" /></label>
       <p className="gc-fine">For people, not promotion: explain what someone can do, who it is useful for, and practical details. Organization posts use the name assigned by Gosie's operator, not a name supplied here. Every post needs moderator approval.</p>

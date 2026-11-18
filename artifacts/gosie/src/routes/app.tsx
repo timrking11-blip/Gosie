@@ -17,6 +17,7 @@ import { groupPlans, localDate } from "@/lib/planning";
 import * as Dialog from "@radix-ui/react-dialog";
 import ResearchedDiscoveries from "@/components/product/ResearchedDiscoveries";
 import "@/research-discoveries.css";
+import { TimeSelect } from "@workspace/community/time";
 const CommunityPanel = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityPanel })));
 const CommunityDiscoveries = lazy(() => import("@workspace/community/panel").then((module) => ({ default: module.CommunityDiscoveries })));
 
@@ -298,7 +299,7 @@ function PlanDialog({ item, profileId, weekStart, onClose, onSaved }: { item: We
       {error && <Notice tone="error">{error}</Notice>}
       <form className="product-form" onSubmit={submit}>
         <label htmlFor="plan-title">What's the plan?</label><input id="plan-title" autoFocus required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <div className="form-row"><div><label htmlFor="plan-day">Date</label><input id="plan-day" type="date" required value={day} onChange={(e) => setDay(e.target.value)} /></div><div><label htmlFor="plan-time">Time</label><input id="plan-time" type="time" value={timeLabel} onChange={(e) => setTime(e.target.value)} /></div></div>
+        <div className="form-row"><div><label htmlFor="plan-day">Date</label><input id="plan-day" type="date" required value={day} onChange={(e) => setDay(e.target.value)} /></div><div><label htmlFor="plan-time">Time</label><TimeSelect id="plan-time" emptyLabel="Any time" value={timeLabel} onChange={(e) => setTime(e.target.value)} /></div></div>
         <div className="form-row"><div><label htmlFor="plan-kind">Kind</label><input id="plan-kind" value={category} onChange={(e) => setCategory(e.target.value)} required /></div><div><label htmlFor="plan-priority">Priority</label><select id="plan-priority" value={priority} onChange={(e) => setPriority(e.target.value as WeekItem["priority"])}><option>High</option><option>Medium</option><option>Low</option></select></div></div>
         <div className="form-row"><div><label htmlFor="plan-domain">For</label><select id="plan-domain" value={domain} onChange={(e) => setDomain(e.target.value as WeekItem["domain"])}><option value="personal">Personal</option><option value="professional">Work</option></select></div><div><label htmlFor="plan-company">Company or project</label><input id="plan-company" value={company} onChange={(e) => setCompany(e.target.value)} /></div></div>
         <div className="modal-actions"><button className="secondary-button" type="button" onClick={onClose}>Cancel</button><button className="product-primary compact" type="submit" disabled={busy}>{busy ? "Saving…" : item ? "Save changes" : "Add to week"}</button></div>

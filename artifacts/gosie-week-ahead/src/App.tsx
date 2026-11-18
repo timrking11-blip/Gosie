@@ -333,7 +333,7 @@ function OutingsPage() {
             </ul>
           </details>
         )}
-        <div className="ranking-note"><Info size={15} aria-hidden="true" /><span>These are four fictional examples. Their tags, score, cost, and travel figures are sample values—not live listings or verified facts. Interests and context only reorder eligible examples; explicit limits exclude them with a reason.</span></div>
+        <div className="ranking-note"><Info size={15} aria-hidden="true" /><span>These are {sampleWeekendIdeas.length} fictional examples across arts, festivals, community, sports, markets, and more. Their tags, score, cost, and travel figures are sample values—not live listings or verified facts. Interests and context only reorder eligible examples; explicit limits exclude them with a reason.</span></div>
         <Footer />
       </main>
     </div>

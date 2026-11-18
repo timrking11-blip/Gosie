@@ -151,7 +151,7 @@ export default function WeekendPreferences({
         <Info size={17} aria-hidden="true" />
         <span>
           Live search is not connected. These preferences stay in this browser and are not sent anywhere.
-          No location or dates are requested. Costs, travel, and all four ideas remain illustrative.
+          No location or dates are requested. All ideas, costs, and travel figures remain illustrative.
         </span>
       </div>
 

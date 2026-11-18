@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   clearWeekendPreferences,
+  activityCategories,
   defaultWeekendPreferences,
   parseWeekendPreferencesImport,
   PREFERENCES_KIND,
@@ -132,10 +133,26 @@ describe('Weekend Ahead illustrative ranking and hard limits', () => {
       maxBudgetUsd: 20,
       maxTravelMinutes: 15,
     }));
-    assert.deepEqual(ranked.excluded.map(({ idea }) => idea.id).sort(), ['o1', 'o3']);
+    assert.ok(['o1', 'o3'].every((id) => ranked.excluded.some(({ idea }) => idea.id === id)));
+    assert.ok(ranked.included.every(({ idea }) => idea.sampleCostUsd <= 20 && idea.sampleTravelMinutes <= 15));
+    assert.equal(ranked.included.length + ranked.excluded.length, sampleWeekendIdeas.length);
     assert.equal(ranked.included.some(({ idea }) => idea.id === 'o1'), false);
     assert.ok(ranked.excluded.find(({ idea }) => idea.id === 'o1')?.reasons.some((reason) => reason.includes('cost estimate')));
     assert.ok(ranked.excluded.find(({ idea }) => idea.id === 'o1')?.reasons.some((reason) => reason.includes('travel estimate')));
+  });
+  it('offers every activity category with fictional examples, matching explanations, and portable choices', () => {
+    assert.equal(new Set(sampleWeekendIdeas.map((idea) => idea.id)).size, sampleWeekendIdeas.length);
+    for (const category of activityCategories) {
+      const matches = sampleWeekendIdeas.filter((idea) => idea.category === category);
+      assert.ok(matches.length > 0, `Missing example for ${category}`);
+      const choices = prefs({ categories: [category] });
+      assert.deepEqual(parseWeekendPreferencesImport(serializeWeekendPreferences(choices)), choices);
+      const ranking = rankSampleIdeas(sampleWeekendIdeas, choices);
+      for (const idea of matches) {
+        assert.ok(ranking.included.find((sample) => sample.idea.id === idea.id)?.reasons.includes(`The sample category matches ${category}.`));
+      }
+      assert.equal(ranking.included.length, sampleWeekendIdeas.length);
+    }
   });
 
   it('returns an honest empty result if every fictional sample fails a hard limit', () => {

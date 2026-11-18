@@ -2,7 +2,10 @@ export const PREFERENCES_VERSION = '1.0.0';
 export const PREFERENCES_KIND = 'gosie-weekend-preferences';
 export const PREFERENCES_STORAGE_KEY = 'gosie-weekend-preferences-v1';
 
-export const activityCategories = ['Music', 'Film', 'Food', 'Outdoors'] as const;
+export const activityCategories = [
+  'Music', 'Film', 'Food', 'Outdoors', 'Arts', 'Festivals', 'Community',
+  'Sports', 'Farmers markets', 'Learning', 'Books', 'Wellbeing', 'Games',
+] as const;
 export const experienceOptions = ['Relaxed', 'Lively', 'Creative', 'Outdoors', 'Low-cost'] as const;
 export const socialContexts = ['All', 'Solo', 'Friends', 'Date', 'Group'] as const;
 
@@ -80,6 +83,69 @@ export const sampleWeekendIdeas: SampleIdea[] = [
     experienceTags: ['Outdoors', 'Low-cost', 'Relaxed'],
     contextScores: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 },
     explanation: 'A fictional walk and market idea. No specific market, route, or opening time is being claimed.',
+  },
+  {
+    id: 'o5', title: 'Small gallery, new perspectives', category: 'Arts', when: 'Saturday · afternoon',
+    sampleCostUsd: 10, sampleTravelMinutes: 18,
+    tags: ['art', 'gallery', 'museum', 'exhibition', 'photography'], experienceTags: ['Creative', 'Relaxed'],
+    contextScores: { All: 8, Solo: 9, Friends: 7, Date: 8, Group: 6 },
+    explanation: 'A fictional gallery and exhibition visit, not a real exhibit, admission price, or opening-hours claim.',
+  },
+  {
+    id: 'o6', title: 'A neighborhood street festival', category: 'Festivals', when: 'Saturday · afternoon',
+    sampleCostUsd: 15, sampleTravelMinutes: 25,
+    tags: ['festival', 'street fair', 'culture', 'music', 'food'], experienceTags: ['Lively', 'Outdoors'],
+    contextScores: { All: 8, Solo: 6, Friends: 9, Date: 7, Group: 9 },
+    explanation: 'A made-up local festival idea. No actual festival, vendors, ticketing, or dates have been verified.',
+  },
+  {
+    id: 'o7', title: 'Community garden volunteer morning', category: 'Community', when: 'Sunday · morning',
+    sampleCostUsd: 0, sampleTravelMinutes: 10,
+    tags: ['community', 'volunteering', 'garden', 'neighbors'], experienceTags: ['Outdoors', 'Low-cost'],
+    contextScores: { All: 7, Solo: 8, Friends: 8, Date: 6, Group: 9 },
+    explanation: 'A fictional volunteering idea, not a real organization, volunteer vacancy, or confirmed meeting time.',
+  },
+  {
+    id: 'o8', title: 'A friendly pickup game in the park', category: 'Sports', when: 'Saturday · morning',
+    sampleCostUsd: 0, sampleTravelMinutes: 12,
+    tags: ['sports', 'basketball', 'soccer', 'fitness', 'pickup game'], experienceTags: ['Lively', 'Outdoors', 'Low-cost'],
+    contextScores: { All: 7, Solo: 7, Friends: 9, Date: 5, Group: 9 },
+    explanation: 'A fictional casual-sports idea. No organized game, facilities, equipment, or spaces are confirmed.',
+  },
+  {
+    id: 'o9', title: 'Seasonal stalls at a farmers market', category: 'Farmers markets', when: 'Sunday · late morning',
+    sampleCostUsd: 15, sampleTravelMinutes: 14,
+    tags: ['farmers market', 'produce', 'seasonal food', 'local growers'], experienceTags: ['Relaxed', 'Outdoors'],
+    contextScores: { All: 7, Solo: 8, Friends: 8, Date: 7, Group: 7 },
+    explanation: 'A fictional farmers market outing. No market schedule, stalls, produce, or purchase prices are verified.',
+  },
+  {
+    id: 'o10', title: 'Try a beginner pottery workshop', category: 'Learning', when: 'Saturday · midday',
+    sampleCostUsd: 40, sampleTravelMinutes: 22,
+    tags: ['workshop', 'pottery', 'crafts', 'learning'], experienceTags: ['Creative', 'Relaxed'],
+    contextScores: { All: 7, Solo: 8, Friends: 8, Date: 9, Group: 7 },
+    explanation: 'A fictional hands-on class, not a real studio, instructor, booking, or available place.',
+  },
+  {
+    id: 'o11', title: 'Bookshop reading and a quiet browse', category: 'Books', when: 'Sunday · afternoon',
+    sampleCostUsd: 0, sampleTravelMinutes: 9,
+    tags: ['books', 'reading', 'literature', 'bookshop', 'author'], experienceTags: ['Relaxed', 'Creative', 'Low-cost'],
+    contextScores: { All: 7, Solo: 9, Friends: 6, Date: 7, Group: 5 },
+    explanation: 'A fictional literary outing. No author appearance, reading time, shop, or admission is confirmed.',
+  },
+  {
+    id: 'o12', title: 'A gentle stretch and mindful pause', category: 'Wellbeing', when: 'Sunday · early morning',
+    sampleCostUsd: 10, sampleTravelMinutes: 10,
+    tags: ['wellbeing', 'yoga', 'stretching', 'mindfulness'], experienceTags: ['Relaxed', 'Low-cost'],
+    contextScores: { All: 6, Solo: 8, Friends: 7, Date: 6, Group: 6 },
+    explanation: 'A fictional wellbeing activity, not a real class, health claim, instructor, or schedule.',
+  },
+  {
+    id: 'o13', title: 'Board games around a shared table', category: 'Games', when: 'Friday · evening',
+    sampleCostUsd: 8, sampleTravelMinutes: 16,
+    tags: ['board games', 'tabletop', 'games', 'meetup'], experienceTags: ['Lively', 'Creative', 'Low-cost'],
+    contextScores: { All: 7, Solo: 6, Friends: 9, Date: 7, Group: 9 },
+    explanation: 'A fictional social-games idea. No actual meetup, host, space, or game collection is being advertised.',
   },
 ];
 
