@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   communityEventsInWindow, communityRequest, communityWeekWindow, hasOrganizationRole, communityWrite as write,
@@ -217,6 +217,8 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
   const [version, setVersion] = useState(0);
   const [showExpired, setShowExpired] = useState(false);
   const [message, setMessage] = useState("");
+  const messageNotice = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (message) messageNotice.current?.focus(); }, [message]);
   const [session, retrySession] = useLoad<Session>("/auth/session", apiBase, version);
   const signedIn = session.status === "ready" && session.data.authenticated;
   const [feed, retryFeed] = useLoad<{ items: CommunityItem[] }>(`/community/items${showExpired ? "?includeExpired=true" : ""}`, apiBase, version);
@@ -237,7 +239,7 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
       <p className="gc-lede">Gosie Communities helps people find useful events and local gems—not an advertising directory. People come first; invited contributors, restaurants, venues, municipalities, and nonprofits can share local knowledge, with every submission reviewed before it appears.</p>
       <p className="gc-fine">Approval means "worth knowing about" — not a guarantee of tickets, tables, prices, or opening hours. Check the source before you go.</p>
     </header>
-    {message && <div className="gc-toast" role="status"><span>{message}</span><button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">Close</button></div>}
+    {message && <div className="gc-toast" ref={messageNotice} tabIndex={-1} role="status"><span>{message}</span><button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">Close</button></div>}
 
     <section className="gc-section" aria-labelledby="gc-feed-h">
       <div className="gc-section-head">

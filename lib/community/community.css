@@ -98,6 +98,10 @@
 .gc-access .gc-btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .gc-access .gc-form > label:has(input[type="checkbox"]) { display: flex; align-items: flex-start; gap: 8px; }
 .gc-access input[type="checkbox"] { width: 18px; min-height: 18px; flex: 0 0 18px; }
+.gc-access { overflow-wrap: anywhere; }
+.gc-access .gc-btn, .gc-access .gc-link { max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; padding-block: 10px; text-align: center; }
+.gc-access .gc-form { width: 100%; min-width: 0; }
+.gc-access :is(h3, [role="alert"], textarea) { scroll-margin-block: 100px; }
 .gc-discover { gap: 14px; margin-top: 34px; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--gc-line); border-radius: 22px; background: var(--gc-paper); }
 .gc-discover .gc-section-head h3 { font-size: 24px; }
 .gc-days { display: grid; gap: 18px; }

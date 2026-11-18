@@ -98,3 +98,17 @@ mtime_ms = 1794997437676
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/6c94abc9-a1c6-4cfe-8d44-94bf13807628/55752629-b7f0-4dfc-b156-42f19c37256a"
 storage_version_token = "1794997532411006"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "QyjMfMgA-uhyIaRzQdIE4"
+uri = "file://docs/organization-access-accessibility-review.md"
+type = "text"
+title = "Gosie Organization Access — Accessibility Evidence"
+description = "Signed-in keyboard results, the three-width simulated 200% text matrix, automated results, cleanup confirmation and explicit verification limits."
+logical_id = "e12da513-9b72-4c61-99ac-ea1cf7b0f60d"
+content_hash = "sha256:b641fe5944b37074eeb0b508657afb935e270cf22958a12a4b7c35cc56bfacb5"
+size = 6194
+mtime_ms = 1794999771912
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:99d6bf21-8dfe-4748-82c9-05fa7f33c806/e12da513-9b72-4c61-99ac-ea1cf7b0f60d/362eb94b-03d3-49cc-827e-a697a5218278"
+storage_version_token = "1794999794295896"
+content_type = "text/markdown"
