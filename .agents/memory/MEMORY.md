@@ -8,3 +8,4 @@
 - [Calendar-aware launch intent](gosie-calendar-intent.md) — launch planning must account for existing leisure commitments, not just offer calendar export.
 - [Brave Search result handling](brave-search-results.md) — connected Brave results must stay transient; never persist snippets or cached results in Gosie catalogs.
 - [Reviewed lead approval](reviewed-lead-approval.md) — changes to approved manual leads need renewed independent review; curation is not live availability verification.
+- [Workspace query context](workspace-query-context.md) — context-bearing libraries must share one runtime across workspace packages; React deduplication alone is insufficient.

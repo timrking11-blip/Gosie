@@ -14,7 +14,7 @@ export default defineConfig({
   resolve: {
     // Cross-client hook tests must use this renderer's React instance, just as
     // the web Vite config deduplicates React for shared workspace components.
-    dedupe: ["react", "react-dom"],
+    dedupe: ["react", "react-dom", "@tanstack/react-query"],
     alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
 });
