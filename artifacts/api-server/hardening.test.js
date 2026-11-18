@@ -298,7 +298,7 @@ test('research catalog requires a session and exposes only the approved contract
     assert.ok(Array.isArray(result.json.records));
     assert.equal(result.json.candidates, undefined);
   } finally {
-    // Do not occupy a place in the existing five-account enrollment test.
+    // Do not occupy a place in the six-account enrollment test.
     await testPool.query('DELETE FROM gosie_users WHERE id=$1', [user.id]);
   }
 });
@@ -320,8 +320,11 @@ test('registration is closed unless explicitly enabled and requires consent', as
   assert.equal(noConsent.status, 400);
 });
 
-test('production enrollment requires an invitation and cannot exceed five accounts', async () => {
-  const emails = Array.from({ length: 5 }, () => `invited-${randomUUID()}@example.invalid`);
+test('production enrollment allows five invitees plus the owner and cannot exceed six accounts', async () => {
+  const emails = [
+    ...Array.from({ length: 5 }, () => `invited-${randomUUID()}@example.invalid`),
+    `pilot-owner-${randomUUID()}@example.invalid`,
+  ];
   const server = await start({
     NODE_ENV: 'production', COOKIE_SECURE: '1',
     PILOT_INVITED_EMAIL_HASHES: emails.map((email) => createHash('sha256').update(email).digest('hex')).join(','),
@@ -329,13 +332,35 @@ test('production enrollment requires an invitation and cannot exceed five accoun
   try {
     assert.equal((await register(server.port, `uninvited-${randomUUID()}@example.invalid`)).status, 403);
     // This test runs before other accounts are created; only its own users are added.
-    for (const email of emails) assert.equal((await register(server.port, email)).status, 201);
+    for (const email of emails.slice(0, 5)) assert.equal((await register(server.port, email)).status, 201);
+    // Concurrent requests for the final invited place must not exceed six.
+    const finalPlace = await Promise.all([
+      register(server.port, emails[5]), register(server.port, emails[5]),
+    ]);
+    assert.deepEqual(finalPlace.map((response) => response.status).sort(), [201, 403]);
+    assert.equal(finalPlace.find((response) => response.status === 403).json.error, 'pilot_capacity_reached');
+    assert.equal((await testPool.query('SELECT COUNT(*)::int AS count FROM gosie_users')).rows[0].count, 6);
     assert.equal((await register(server.port, emails[0])).json.error, 'pilot_capacity_reached');
   } finally {
     await stop(server);
     for (const email of emails) {
       await testPool.query('DELETE FROM gosie_users WHERE email=$1 AND id=ANY($2::text[])', [email, [...registeredIds]]);
     }
+  }
+});
+
+test('production enrollment rejects an oversized seven-address invitation list', async () => {
+  const emails = Array.from({ length: 7 }, () => `oversized-${randomUUID()}@example.invalid`);
+  const server = await start({
+    NODE_ENV: 'production', COOKIE_SECURE: '1',
+    PILOT_INVITED_EMAIL_HASHES: emails.map((email) => createHash('sha256').update(email).digest('hex')).join(','),
+  });
+  try {
+    const result = await register(server.port, emails[0]);
+    assert.equal(result.status, 403);
+    assert.equal(result.json.error, 'pilot_invitation_required');
+  } finally {
+    await stop(server);
   }
 });
 

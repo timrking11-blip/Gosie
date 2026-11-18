@@ -20,6 +20,9 @@ const {
 
 const MAX_BODY = 1024 * 1024;
 const MAX_PROFILES_PER_USER = 50;
+// Five invited participants plus one owner using the same consumer experience.
+// This is an account limit, not a grant of moderator or operator permissions.
+const MAX_PILOT_ACCOUNTS = 6;
 const PILOT_NOTICE_VERSION = '2026-11-17-v1';
 const INVITED_EMAIL_HASHES = new Set(
   String(process.env.PILOT_INVITED_EMAIL_HASHES || '').split(',').map((value) => value.trim()).filter((value) => /^[a-f0-9]{64}$/.test(value)),
@@ -303,7 +306,7 @@ function createApiHandler() {
         if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'invalid_email' });
         if (body.password.length < 8 || body.password.length > 200) return send(res, 400, { error: 'password_length_invalid' });
         const productionEnrollment = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
-        if (productionEnrollment && (INVITED_EMAIL_HASHES.size > 5 || !INVITED_EMAIL_HASHES.has(hash(email)))) {
+        if (productionEnrollment && (INVITED_EMAIL_HASHES.size > MAX_PILOT_ACCOUNTS || !INVITED_EMAIL_HASHES.has(hash(email)))) {
           return send(res, 403, { error: 'pilot_invitation_required' });
         }
         const userId = `user-${token(12)}`;
@@ -312,10 +315,10 @@ function createApiHandler() {
         try {
           await client.query('BEGIN');
           if (productionEnrollment) {
-            // Serialize the count and insert so simultaneous signups cannot exceed five.
+            // Serialize the count and insert so simultaneous signups cannot exceed the pilot cap.
             await client.query("SELECT pg_advisory_xact_lock(hashtext('gosie-pilot-enrollment'))");
             const count = await client.query('SELECT COUNT(*)::int AS count FROM gosie_users');
-            if (count.rows[0].count >= 5) {
+            if (count.rows[0].count >= MAX_PILOT_ACCOUNTS) {
               await client.query('ROLLBACK');
               return send(res, 403, { error: 'pilot_capacity_reached' });
             }

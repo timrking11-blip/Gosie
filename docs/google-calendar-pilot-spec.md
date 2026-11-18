@@ -27,7 +27,7 @@ not a verified implementation or transferable integration.
 
 | Status | Decision |
 | --- | --- |
-| Confirmed | Private web-first pilot; five invited participants with their own data, after release/privacy approval |
+| Confirmed | Private web-first pilot; five invited participants plus one owner account, after release/privacy approval |
 | Confirmed | Replit hosting and Postgres; retain hardened email/password login |
 | Confirmed | Delete pilot data after the pilot; recovery-history erasure is not promised |
 | Confirmed | Google Calendar is the first calendar provider to specify |

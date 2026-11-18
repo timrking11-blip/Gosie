@@ -21,8 +21,11 @@ The managed `artifacts/gosie: web` workflow starts Vite and this API, with
 same-origin `/api` forwarding. Registration is **closed by default**, including
 the shared preview. `PILOT_SIGNUPS_ENABLED=1` is reserved for isolated tests;
 do not enable it publicly without release approval. Production additionally
-requires `PILOT_INVITED_EMAIL_HASHES` (up to five SHA-256 hashes of normalized
-invited email addresses) and enforces a transaction-serialized five-account cap.
+requires `PILOT_INVITED_EMAIL_HASHES` (up to six SHA-256 hashes of normalized
+invited email addresses) and enforces a transaction-serialized six-account cap:
+five invited participants plus one owner account. The owner's address must also
+be explicitly invited; this place grants no moderator or operator permissions.
+No address is allowlisted automatically, and registration remains closed.
 Configure that allowlist only after privately confirming participant identities.
 An email allowlist is not automated email verification or password recovery.
 
@@ -71,7 +74,7 @@ owned records and never link carry-over IDs to existing users' records.
   immediate erasure from provider recovery history.
 - HTTPS cookie/login validation on the chosen published revision.
 - Real redeploy durability and provider-supported recovery verification.
-- Five invited users, a full planning cycle/return visit, and a findings report.
+- Five invited participants plus one owner account, a full planning cycle/return visit, and a findings report.
 
 Do not collect real participant data, enable public registration, publish, invite
 users, or claim pilot readiness until those checks and approvals are complete.

@@ -8,7 +8,8 @@ GitHub `main` or in a published deployment.
 
 - Web-first pilot on Replit with Replit Postgres.
 - Harden the existing email/password approach; no authentication-provider switch.
-- Intended audience: five invited participants with their own data, **after**
+- Intended audience: five invited participants plus one owner pilot account
+  (six accounts total) with their own data, **after**
   privacy, invitation, and hosting checks.
 - Delete pilot data after the pilot. No end date or provider-recovery retention
   policy has been approved; do not promise immediate backup erasure.
@@ -34,9 +35,11 @@ GitHub `main` or in a published deployment.
 - Password hashing, origin/JSON-body checks, session CSRF, persistent auth
   rate limits, secure production cookies, server-side ownership, account deletion.
 - Sign-in/out, closed-by-default registration, new/copy/select/delete profiles.
-  Production additionally requires an owner-configured allowlist of at most five
-  hashed email addresses and serializes registration to cap the pilot at five
-  accounts. No real allowlist or invitation was configured.
+  Production additionally requires an owner-configured allowlist of at most six
+  hashed email addresses and serializes registration to cap the pilot at six
+  accounts (five participants plus the owner). The owner uses the same invitation,
+  consent and account-isolation rules; no privileged role is granted. No real
+  allowlist or invitation was configured.
 - Owned plan creation, editing, completion, deletion, next-week carry-forward,
   category/company/date grouping, and week navigation.
 - Persistent source labels for fictional copied plans, including after reload,
@@ -89,7 +92,7 @@ browser pass was run.
 
 ## Release gates still open
 
-1. Review/configure invite-only enrollment for five participants. The registration
+1. Review/configure invite-only enrollment for five participants plus the owner. The registration
    flag and email allowlist are not email-identity verification mechanisms.
    Decide recovery and identity support before users depend on password accounts.
 2. Approve the pilot notice, end date, deletion responsibility, repository/license
@@ -98,7 +101,7 @@ browser pass was run.
    secure cookies, ownership, and same-origin API routing; then verify real
    redeploy persistence and provider-supported recovery. Do not build a custom
    backup database or startup/dump job.
-4. Only after those gates: invite five people, observe a full plan/return cycle,
+4. Only after those gates: invite five participants and the owner, observe a full plan/return cycle,
    record explicit qualitative findings, and delete data at the agreed end.
 
 No pilot-readiness, real-discovery demand, personalization learning, or
