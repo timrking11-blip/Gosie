@@ -26,7 +26,7 @@ export type CommunityComment = {
 };
 export type CommunityDraft = Pick<CommunityItem, "kind" | "title" | "description" | "location" | "attribution"> &
   { sourceUrl?: string; startsAt?: string | null; endsAt?: string | null };
-export type CommunityMine = { roles: CommunityRole[]; items: CommunityItem[]; comments: CommunityComment[] };
+export type CommunityMine = { roles: CommunityRole[]; isOperator?: boolean; items: CommunityItem[]; comments: CommunityComment[] };
 
 export async function communityRequest<T>(path: string, options: RequestInit = {}, apiBase = "/api"): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
@@ -38,6 +38,11 @@ export async function communityRequest<T>(path: string, options: RequestInit = {
   catch { throw new Error("The Communities service did not return a usable response. Please retry later."); }
   if (!response.ok) throw new Error(json.error || `Request failed (${response.status})`);
   return json as T;
+}
+export async function communityWrite<T>(path: string, body: unknown, apiBase: string): Promise<T> {
+  const session = await communityRequest<{ authenticated: boolean; csrfToken?: string }>("/auth/session", {}, apiBase);
+  if (!session.authenticated || !session.csrfToken) throw new Error("Please sign in again to continue.");
+  return communityRequest<T>(path, { method: "POST", body: JSON.stringify(body), headers: { "X-CSRF-Token": session.csrfToken } }, apiBase);
 }
 export function communityWeekWindow(date = new Date()) {
   const start = new Date(date);

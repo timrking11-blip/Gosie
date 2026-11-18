@@ -113,12 +113,13 @@ practical notes alongside people and restaurants. They receive no automatic
 publication, recommendation priority or verified-identity badge. Moderators
 should reject advertising-only, irrelevant or misleading submissions.
 
-No account receives a contributor, organization, owner, or moderator role at signup. The
-operator must approve the account and assign rows in `gosie_community_roles`
-through their controlled database administration process. There is deliberately
-no HTTP role-management/self-grant endpoint, no automatic business verification,
-and no preconfigured privileged account. Restaurant comment attribution comes
-from the designated restaurant name, not the submitted request.
+No account receives a contributor, organization, owner, moderator, or operator
+permission at signup. Contributor and moderator grants remain controlled database
+administration only. Explicitly appointed operators can now review organization
+access through the private Communities panel and API below. There is no public
+self-enrollment, automatic business verification, or preconfigured privileged
+account. Organization attribution comes from the designated public identity,
+not the submitted request.
 **No real role assignments or invitations have been authorized by this build.**
 
 The expanded operator-assigned organization roles are `venue`, `municipality`
@@ -127,10 +128,57 @@ legacy `restaurant-owner` role retains `restaurant_name`. Organization submissio
 and note attribution is taken from the grant, not the request. Both submissions
 and event notes start pending. Even a representative with a separate moderator
 grant cannot review their own content. Operators should designate one organization
-identity per account; if multiple organization grants exist, the first role in
-alphabetical order supplies the identity. There is no self-service role endpoint.
+identity per account; if legacy multiple organization grants exist, the first role
+in alphabetical order supplies the identity until the operator revokes the extra
+grants. The reviewed workflow refuses a new grant while any organization grant
+exists. There is no self-service role endpoint.
 The schema expansion is explicitly applied to development/test only; no production
 schema update, real organization grants or public enrollment was performed.
+
+### Reviewed organization access (operator-only)
+
+Apply `schema.sql` explicitly to development/test before using the updated API.
+No startup DDL or production migration is performed. The separate
+`gosie_community_operators` table starts empty. A trusted database administrator
+must separately authorize an existing account by placing its ID in that table;
+no application endpoint, moderator permission, signup field or import can do so.
+This implementation does not appoint any real operator or organization.
+
+- `GET /api/community/mine` exposes only the current account's `isOperator`
+  capability flag. It does not list other accounts or operator identities.
+- `GET /api/community/organization-access` returns current organization grants
+  (first 500; `truncated` is explicit) and the last 100 access decisions. Both
+  account IDs and review reasons are private to explicitly authorized operators.
+- `POST /api/community/organization-access` requires `userId` of an existing
+  account, `organizationType` (`venue`, `municipality`, `nonprofit`, or legacy
+  `restaurant-owner`), `publicIdentity` (1–80 characters), and `reason`
+  (10–1000 characters). The UI requires explicit review confirmation. Existing
+  grants must be revoked before replacing an identity or changing its type.
+- `POST /api/community/organization-access/revoke` requires `userId`,
+  `organizationType`, current `accessVersion`, and a review `reason`. A stale
+  version returns 409, including if access was revoked and granted again.
+  Refresh and review the current grant rather than blindly retrying.
+- Both writes require the session's CSRF token. Explicit operator authorization
+  is rechecked in the transaction; concurrent grants are serialized per account.
+  Grant/revoke and their private review record commit or roll back together.
+  Operators cannot manage their own organization access or grant moderator or
+  operator privileges through these routes.
+
+Revocation stops that organization's submissions and event notes on subsequent
+requests. It does not delete or approve content, remove independent contributor
+or moderator permissions, rewrite historical attribution, or expose pending
+content to operators without a separate moderator grant. Pending/rejected
+content remains visible only to its author and moderators. Content moderation
+still refuses an author's own review.
+
+Legacy grants are labeled as lacking a reviewed grant decision; they are not
+automatically verified or assigned fabricated review metadata. Review records
+remain while the target account exists, including after revocation. Deleting
+that account cascades its access records; deleting the reviewing operator
+nulls the reviewer reference on other accounts' records. Do not put credentials,
+private identity documents, or sensitive personal information in review reasons.
+Pilot-end deletion and provider-recovery retention remain subject to the
+existing pilot policy, not a promise of immediate backup erasure.
 
 Timed events require a start and end with a timezone, ordered correctly and ending
 in the future. Clients show overlapping events on their actual dates in the

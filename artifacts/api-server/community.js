@@ -1,5 +1,6 @@
 const { pool } = require('./db');
-const { token, hasCsrf } = require('./security');
+const { token, hasCsrf, isCommunityOperator } = require('./security');
+const { handleOrganizationAccess } = require('./organization-access');
 const organizationRoles = new Set(['restaurant-owner', 'venue', 'municipality', 'nonprofit']);
 
 const iso = (value) => value ? new Date(value).toISOString() : null;
@@ -67,6 +68,9 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
     return reply(403, { error: 'csrf_required' });
   }
   const userId = session.user.id;
+  if (path === '/community/organization-access' || path.startsWith('/community/organization-access/')) {
+    return handleOrganizationAccess({ req, path, body, userId, reply });
+  }
   const grants = await rolesFor(userId);
   const roles = grants.map((grant) => grant.role);
   if (req.method === 'GET' && path === '/community/mine') {
@@ -74,7 +78,7 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
       pool.query('SELECT * FROM gosie_community_items WHERE user_id=$1 ORDER BY created_at DESC', [userId]),
       pool.query('SELECT * FROM gosie_community_comments WHERE user_id=$1 ORDER BY created_at DESC', [userId]),
     ]);
-    return reply(200, { roles, items: items.rows.map((row) => mapItem(row)), comments: comments.rows.map(mapComment) });
+    return reply(200, { roles, isOperator: await isCommunityOperator(userId), items: items.rows.map((row) => mapItem(row)), comments: comments.rows.map(mapComment) });
   }
   if (req.method === 'POST' && path === '/community/items') {
     const organization = grants.find((grant) => organizationRoles.has(grant.role));

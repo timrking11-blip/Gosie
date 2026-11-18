@@ -569,6 +569,115 @@ test('imports preserve owned carry-over links and never reference existing users
   assert.equal(mismatch.status, 400);
 });
 
+test('organization access requires reviewed operator decisions and safe revocation', async (t) => {
+  const operator = await makeUser(primary.port);
+  const moderator = await makeUser(primary.port);
+  const reader = await makeUser(primary.port);
+  const organization = await makeUser(primary.port);
+  await testPool.query('INSERT INTO gosie_community_operators(user_id) VALUES ($1)', [operator.id]);
+  await testPool.query("INSERT INTO gosie_community_roles(user_id,role) VALUES ($1,'moderator')", [moderator.id]);
+  const base = '/community/organization-access';
+  const auth = (user) => ({ cookie: user.cookie, csrf: user.csrf });
+  const get = (user) => call(primary.port, 'GET', base, user ? auth(user) : {});
+  const post = (body, user = operator, route = base) => call(primary.port, 'POST', route, { ...auth(user), body });
+  const draft = { userId: organization.id, organizationType: 'venue', publicIdentity: 'Synthetic community venue',
+    reason: 'Synthetic manual representation review; not a real grant.' };
+  let grant;
+  let pending;
+  await t.test('only explicit operators see access history; moderator status is insufficient', async () => {
+    assert.equal((await get()).status, 401);
+    for (const user of [reader, moderator, organization]) {
+      assert.equal((await get(user)).status, 403);
+      assert.equal((await post(draft, user)).status, 403);
+    }
+    assert.equal((await get(operator)).status, 200);
+    const mine = (user) => call(primary.port, 'GET', '/community/mine', auth(user));
+    assert.equal((await mine(operator)).json.isOperator, true);
+    assert.equal((await mine(moderator)).json.isOperator, false);
+    assert.equal((await call(primary.port, 'GET', '/community/moderation', auth(operator))).status, 403);
+  });
+  await t.test('CSRF, self-grants, unsupported privileges and incomplete reviews are rejected', async () => {
+    for (const route of [base, `${base}/revoke`]) {
+      assert.equal((await call(primary.port, 'POST', route, { cookie: operator.cookie, body: draft })).status, 403);
+      assert.equal((await call(primary.port, 'POST', route, { cookie: operator.cookie, csrf: 'wrong', body: draft })).status, 403);
+    }
+    assert.equal((await post({ ...draft, userId: operator.id })).status, 403);
+    for (const override of [{ organizationType: 'moderator' }, { organizationType: 'operator' }, { reason: '' },
+      { publicIdentity: ' ' }, { reason: 'x'.repeat(1001) }, { approved: true }, { isOperator: true }]) {
+      assert.equal((await post({ ...draft, ...override })).status, 400);
+    }
+    assert.equal((await post({ ...draft, userId: `absent-${randomUUID()}` })).status, 404);
+  });
+  await t.test('reviewed access records the identity and reason without enabling self-publication', async () => {
+    assert.equal((await post(draft)).status, 201);
+    const list = (await get(operator)).json;
+    grant = list.grants.find((row) => row.userId === organization.id);
+    assert.equal(grant.publicIdentity, draft.publicIdentity);
+    assert.equal(grant.legacy, false);
+    const review = list.reviews.find((row) => row.userId === organization.id);
+    assert.equal(review.action, 'grant');
+    assert.equal(review.reason, draft.reason);
+    assert.equal(review.reviewedBy, operator.id);
+    assert.equal((await post({ ...draft, organizationType: 'nonprofit' })).status, 409);
+    const result = await post({ kind: 'gem', title: 'Synthetic organization gem', description: 'Synthetic, not a real discovery.',
+      location: 'Fictional location', attribution: 'Forged client identity' }, organization, '/community/items');
+    assert.equal(result.status, 201);
+    pending = result.json.item;
+    assert.equal(pending.attribution, draft.publicIdentity);
+    assert.equal(pending.status, 'pending');
+    assert.equal((await call(primary.port, 'GET', '/community/items')).json.items.some((item) => item.id === pending.id), false);
+    assert.equal((await call(primary.port, 'GET', '/community/moderation', auth(operator))).status, 403);
+    assert.equal((await post({ decision: 'approved' }, organization, `/community/moderation/items/${pending.id}`)).status, 403);
+  });
+  await t.test('revocation requires the current version and an operator review reason', async () => {
+    const revocation = { userId: organization.id, organizationType: 'venue', accessVersion: grant.accessVersion, reason: 'Synthetic access revocation after manual review.' };
+    assert.equal((await post(revocation, moderator, `${base}/revoke`)).status, 403);
+    assert.equal((await post({ ...revocation, reason: 'short' }, operator, `${base}/revoke`)).status, 400);
+    assert.equal((await post({ ...revocation, accessVersion: 'stale' }, operator, `${base}/revoke`)).status, 409);
+    assert.equal((await post(revocation, operator, `${base}/revoke`)).status, 200);
+    assert.equal((await post(revocation, operator, `${base}/revoke`)).status, 409);
+    const list = (await get(operator)).json;
+    assert.equal(list.grants.some((row) => row.userId === organization.id), false);
+    assert.equal(list.reviews.find((row) => row.userId === organization.id && row.action === 'revoke').reason, revocation.reason);
+    assert.equal((await post({ kind: 'gem', title: 'Blocked', description: 'Synthetic denied attempt.', location: 'Fictional', attribution: 'Fake' }, organization, '/community/items')).status, 403);
+    assert.equal((await post({ text: 'Blocked note' }, organization, '/community/items/unknown/comments')).status, 403);
+    const mine = (await call(primary.port, 'GET', '/community/mine', auth(organization))).json;
+    assert.equal(mine.items.find((row) => row.id === pending.id).status, 'pending');
+    assert.equal((await call(primary.port, 'GET', '/community/mine', auth(reader))).json.items.some((item) => item.id === pending.id), false);
+    assert.equal((await call(primary.port, 'GET', '/community/items')).json.items.some((item) => item.id === pending.id), false);
+    assert.equal((await post(draft)).status, 201);
+    assert.equal((await post(revocation, operator, `${base}/revoke`)).status, 409, 'stale revoke cannot undo a new grant');
+    const current = (await get(operator)).json.grants.find((row) => row.userId === organization.id);
+    assert.notEqual(current.accessVersion, grant.accessVersion);
+  });
+  await t.test('each organization type can be granted and revoked without granting moderation or retaining account data', async () => {
+    const target = await makeUser(primary.port);
+    for (const organizationType of ['venue', 'municipality', 'nonprofit', 'restaurant-owner']) {
+      assert.equal((await post({ ...draft, userId: target.id, organizationType })).status, 201);
+      const current = (await get(operator)).json.grants.find((row) => row.userId === target.id);
+      assert.equal(current.publicIdentity, draft.publicIdentity);
+      const mine = (await call(primary.port, 'GET', '/community/mine', auth(target))).json;
+      assert.deepEqual(mine.roles, [organizationType]);
+      assert.equal(mine.isOperator, false);
+      assert.equal((await post({ userId: target.id, organizationType, accessVersion: current.accessVersion,
+        reason: 'Synthetic reviewed removal for lifecycle coverage.' }, operator, `${base}/revoke`)).status, 200);
+    }
+    assert.equal((await get(operator)).json.reviews.filter((row) => row.userId === target.id).length, 8);
+    await testPool.query('DELETE FROM gosie_users WHERE id=$1', [target.id]);
+    assert.equal((await testPool.query('SELECT id FROM gosie_organization_access_reviews WHERE user_id=$1', [target.id])).rowCount, 0);
+  });
+  await t.test('competing grants serialize and explicit operator removal takes effect on the next request', async () => {
+    const next = await makeUser(primary.port);
+    const results = await Promise.all(['municipality', 'nonprofit'].map((organizationType) => post({ ...draft, userId: next.id, organizationType })));
+    assert.deepEqual(results.map((r) => r.status).sort(), [201, 409]);
+    const role = (await get(operator)).json.grants.find((row) => row.userId === next.id).organizationType;
+    assert.ok(['municipality', 'nonprofit'].includes(role));
+    await testPool.query('DELETE FROM gosie_community_operators WHERE user_id=$1', [operator.id]);
+    assert.equal((await get(operator)).status, 403);
+    assert.equal((await post(draft)).status, 403);
+  });
+});
+
 test('Communities enforce grants, privacy, moderation, expiry, and owner attribution', async (t) => {
   const reader = await makeUser(primary.port);
   const contributor = await makeUser(primary.port);

@@ -115,7 +115,14 @@ function hasCsrf(req, session) {
   return typeof supplied === 'string' && safeEqual(supplied, session.csrf_token);
 }
 
+// An operator is explicitly appointed through controlled DB administration.
+// Community moderator/contributor roles never imply this permission.
+async function isCommunityOperator(userId, client = pool) {
+  return Boolean((await client.query('SELECT user_id FROM gosie_community_operators WHERE user_id=$1', [userId])).rowCount);
+}
+
 module.exports = {
+  isCommunityOperator,
   SESSION_COOKIE,
   SESSION_DAYS,
   clearSessionCookie,

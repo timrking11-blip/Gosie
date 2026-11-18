@@ -75,8 +75,8 @@ CREATE INDEX IF NOT EXISTS gosie_profiles_user_idx ON gosie_profiles(user_id);
 CREATE INDEX IF NOT EXISTS gosie_feedback_profile_idx ON gosie_feedback(user_id, profile_id);
 CREATE INDEX IF NOT EXISTS gosie_week_items_profile_day_idx ON gosie_week_items(user_id, profile_id, day);
 
--- Roles are operator-assigned; there is deliberately no HTTP self-enrollment
--- or role-management endpoint. No role means approved-feed access only.
+-- No role means approved-feed access only. Operator authorization is separate
+-- from community moderation and can only be bootstrapped by controlled DB admin.
 CREATE TABLE IF NOT EXISTS gosie_community_roles (
   user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('contributor','restaurant-owner','moderator')),
@@ -96,6 +96,20 @@ ALTER TABLE gosie_community_roles ADD CONSTRAINT gosie_community_roles_organizat
   CHECK (role NOT IN ('venue','municipality','nonprofit') OR
     (organization_name IS NOT NULL AND length(trim(organization_name)) BETWEEN 1 AND 80));
 COMMIT;
+ALTER TABLE gosie_community_roles ADD COLUMN IF NOT EXISTS access_version TEXT NOT NULL DEFAULT 'legacy';
+CREATE TABLE IF NOT EXISTS gosie_community_operators (
+  user_id TEXT PRIMARY KEY REFERENCES gosie_users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS gosie_organization_access_reviews (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,
+  reviewed_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
+  organization_type TEXT NOT NULL CHECK (organization_type IN ('restaurant-owner','venue','municipality','nonprofit')),
+  public_identity TEXT NOT NULL CHECK (length(trim(public_identity)) BETWEEN 1 AND 80),
+  action TEXT NOT NULL CHECK (action IN ('grant','revoke')),
+  reason TEXT NOT NULL CHECK (length(trim(reason)) BETWEEN 10 AND 1000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 CREATE TABLE IF NOT EXISTS gosie_community_items (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
-  communityEventsInWindow, communityRequest, communityWeekWindow, hasOrganizationRole,
+  communityEventsInWindow, communityRequest, communityWeekWindow, hasOrganizationRole, communityWrite as write,
 } from "./api";
 import type { CommunityComment, CommunityDraft, CommunityItem, CommunityMine } from "./api";
 import "./community.css";
 import { TimeSelect, localEventIso } from "./TimeSelect";
+import { OrganizationAccessPanel } from "./OrganizationAccessPanel";
 
 type Session = { authenticated: boolean; user?: { email?: string } | null; csrfToken?: string };
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
@@ -43,13 +44,6 @@ function useLoad<T>(path: string | null, apiBase: string, version: number): [Loa
     return () => ctrl.abort();
   }, [path, apiBase, version, tick]);
   return [state, useCallback(() => setTick((t) => t + 1), [])];
-}
-
-async function write<T>(path: string, body: unknown, apiBase: string): Promise<T> {
-  // Token is fetched fresh for each write and kept only in memory for this call.
-  const session = await communityRequest<Session>("/auth/session", {}, apiBase);
-  if (!session.authenticated || !session.csrfToken) throw new Error("Please sign in again to continue.");
-  return communityRequest<T>(path, { method: "POST", body: JSON.stringify(body), headers: { "X-CSRF-Token": session.csrfToken } }, apiBase);
 }
 
 function StatusChip({ status, expired }: { status: CommunityItem["status"]; expired?: boolean }) {
@@ -235,6 +229,7 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
       session.status === "error" ? <ErrorBox what="Your sign-in status" message={session.message} onRetry={retrySession} /> :
       !signedIn ? <section className="gc-section gc-invite"><h3>Want to help your community?</h3><p>Sign in to see your suggestions and their review status. Sharing is open to invited people and designated restaurants, venues, municipalities, and nonprofits. Organization access is assigned separately; it never allows self-publishing.</p><a className="gc-btn" href={loginHref}>Sign in</a></section> :
       <>
+        {mine.status === "ready" && mine.data.isOperator === true && <OrganizationAccessPanel key={version} apiBase={apiBase} onDone={done} />}
         <section className="gc-section" aria-labelledby="gc-mine-h">
           <div className="gc-section-head"><h3 id="gc-mine-h">Your suggestions</h3><span className="gc-private">Pending and rejected: you and moderators only</span></div>
           {mine.status === "loading" ? <Skeleton label="Loading your suggestions" /> :
