@@ -653,6 +653,37 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.match(publishedGem.why, /not a scheduled event/);
     assert.equal((await post(`/community/items/${gem.id}/comments`, { text: 'Not an event' }, owner)).status, 404);
   });
+  await t.test('venues, municipalities and nonprofits share under assigned identities and remain moderated', async () => {
+    for (const role of ['venue', 'municipality', 'nonprofit']) {
+      const organization = await makeUser(primary.port);
+      const name = `Synthetic ${role}`;
+      await assert.rejects(testPool.query(
+        'INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,$2)', [organization.id, role],
+      ), /check constraint/);
+      await testPool.query(
+        'INSERT INTO gosie_community_roles (user_id,role,organization_name) VALUES ($1,$2,$3)',
+        [organization.id, role, name],
+      );
+      const submitted = await post('/community/items', { ...draft, attribution: 'Spoofed credit', kind: 'gem', startsAt: null, endsAt: null }, organization);
+      assert.equal(submitted.status, 201);
+      assert.equal(submitted.json.item.status, 'pending');
+      assert.equal(submitted.json.item.attribution, name);
+      assert.equal((await get('/community/items')).json.items.some((row) => row.id === submitted.json.item.id), false);
+      assert.equal((await get('/community/mine', reader)).json.items.some((row) => row.id === submitted.json.item.id), false);
+      assert.equal((await get('/community/moderation', organization)).status, 403);
+      assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'Useful organization detail', attribution: 'Spoofed' }, organization)).status, 400);
+      const note = await post(`/community/items/${item.id}/comments`, { text: 'Useful organization detail' }, organization);
+      assert.equal(note.status, 201);
+      assert.equal(note.json.comment.attribution, name);
+      assert.equal(note.json.comment.status, 'pending');
+      assert.equal((await get('/community/items')).json.items.find((row) => row.id === item.id).comments.some((row) => row.id === note.json.comment.id), false);
+      await testPool.query("INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,'moderator')", [organization.id]);
+      assert.equal((await moderate('items', submitted.json.item.id, 'approved', organization)).status, 403);
+      assert.equal((await moderate('comments', note.json.comment.id, 'approved', organization)).status, 403);
+      assert.equal((await moderate('items', submitted.json.item.id)).status, 200);
+      assert.equal((await moderate('comments', note.json.comment.id)).status, 200);
+    }
+  });
   await t.test('rejected submissions and comments remain private and never enter public reads', async () => {
     rejected = (await post('/community/items', { ...draft, title: 'Rejected synthetic submission' })).json.item;
     assert.equal((await moderate('items', rejected.id, 'rejected')).status, 200);

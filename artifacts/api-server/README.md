@@ -107,13 +107,30 @@ fictional. There is still no external live-source ingestion or calendar connecto
   `/api/community/moderation/items|comments/:id`. Writes require session CSRF.
   Moderators cannot approve their own submissions; decisions are terminal.
 
-No account receives a contributor, owner, or moderator role at signup. The
+Communities is **for people, not an advertising directory**. Invited venues,
+municipalities and nonprofits may contribute useful events, local gems and
+practical notes alongside people and restaurants. They receive no automatic
+publication, recommendation priority or verified-identity badge. Moderators
+should reject advertising-only, irrelevant or misleading submissions.
+
+No account receives a contributor, organization, owner, or moderator role at signup. The
 operator must approve the account and assign rows in `gosie_community_roles`
 through their controlled database administration process. There is deliberately
 no HTTP role-management/self-grant endpoint, no automatic business verification,
 and no preconfigured privileged account. Restaurant comment attribution comes
 from the designated restaurant name, not the submitted request.
 **No real role assignments or invitations have been authorized by this build.**
+
+The expanded operator-assigned organization roles are `venue`, `municipality`
+and `nonprofit`. Each requires an `organization_name` of 1–80 characters; the
+legacy `restaurant-owner` role retains `restaurant_name`. Organization submission
+and note attribution is taken from the grant, not the request. Both submissions
+and event notes start pending. Even a representative with a separate moderator
+grant cannot review their own content. Operators should designate one organization
+identity per account; if multiple organization grants exist, the first role in
+alphabetical order supplies the identity. There is no self-service role endpoint.
+The schema expansion is explicitly applied to development/test only; no production
+schema update, real organization grants or public enrollment was performed.
 
 Timed events require a start and end with a timezone, ordered correctly and ending
 in the future. Clients show overlapping events on their actual dates in the

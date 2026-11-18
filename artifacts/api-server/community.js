@@ -1,5 +1,6 @@
 const { pool } = require('./db');
 const { token, hasCsrf } = require('./security');
+const organizationRoles = new Set(['restaurant-owner', 'venue', 'municipality', 'nonprofit']);
 
 const iso = (value) => value ? new Date(value).toISOString() : null;
 function mapComment(row) {
@@ -45,7 +46,7 @@ function validateDraft(body) {
 }
 async function rolesFor(userId) {
   if (!userId) return [];
-  return (await pool.query('SELECT role, restaurant_name FROM gosie_community_roles WHERE user_id=$1', [userId])).rows;
+  return (await pool.query('SELECT role, restaurant_name, organization_name FROM gosie_community_roles WHERE user_id=$1 ORDER BY role', [userId])).rows;
 }
 async function publicItems(includeExpired = false) {
   const items = await pool.query(`SELECT * FROM gosie_community_items WHERE status='approved'
@@ -76,26 +77,27 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
     return reply(200, { roles, items: items.rows.map((row) => mapItem(row)), comments: comments.rows.map(mapComment) });
   }
   if (req.method === 'POST' && path === '/community/items') {
-    if (!roles.includes('contributor') && !roles.includes('restaurant-owner')) return reply(403, { error: 'contributor_permission_required' });
+    const organization = grants.find((grant) => organizationRoles.has(grant.role));
+    if (!roles.includes('contributor') && !organization) return reply(403, { error: 'contributor_permission_required' });
     const invalid = validateDraft(body);
     if (invalid) return reply(400, { error: invalid });
     const result = await pool.query(`INSERT INTO gosie_community_items
       (id,user_id,kind,title,description,location,attribution,source_url,starts_at,ends_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
     [`community-${token(12)}`, userId, body.kind, body.title.trim(), body.description.trim(),
-      body.location.trim(), body.attribution.trim(), body.sourceUrl || null,
+      body.location.trim(), organization ? (organization.organization_name || organization.restaurant_name) : body.attribution.trim(), body.sourceUrl || null,
       body.kind === 'event' ? body.startsAt : null, body.kind === 'event' ? body.endsAt : null]);
     return reply(201, { item: mapItem(result.rows[0]) });
   }
   const commentMatch = path.match(/^\/community\/items\/([^/]+)\/comments$/);
   if (req.method === 'POST' && commentMatch) {
-    const owner = grants.find((grant) => grant.role === 'restaurant-owner');
-    if (!owner) return reply(403, { error: 'restaurant_owner_permission_required' });
+    const owner = grants.find((grant) => organizationRoles.has(grant.role));
+    if (!owner) return reply(403, { error: 'organization_permission_required' });
     if (Object.keys(body).some((key) => key !== 'text') || typeof body.text !== 'string' || !body.text.trim() || body.text.length > 1000) return reply(400, { error: 'invalid_comment' });
     const result = await pool.query(`INSERT INTO gosie_community_comments (id,item_id,user_id,body,attribution)
       SELECT $1,id,$2,$3,$4 FROM gosie_community_items
       WHERE id=$5 AND kind='event' AND status='approved' AND ends_at>NOW() RETURNING *`,
-    [`comment-${token(12)}`, userId, body.text.trim(), owner.restaurant_name, commentMatch[1]]);
+    [`comment-${token(12)}`, userId, body.text.trim(), owner.organization_name || owner.restaurant_name, commentMatch[1]]);
     return result.rowCount ? reply(201, { comment: mapComment(result.rows[0]) }) : reply(404, { error: 'current_approved_event_not_found' });
   }
   if (req.method === 'GET' && path === '/community/moderation') {

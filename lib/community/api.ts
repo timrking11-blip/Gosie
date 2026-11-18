@@ -1,5 +1,8 @@
 /** Shared browser/native contract. Only approved records appear in public feeds. */
-export type CommunityRole = "contributor" | "restaurant-owner" | "moderator";
+export type CommunityRole = "contributor" | "restaurant-owner" | "venue" | "municipality" | "nonprofit" | "moderator";
+export function hasOrganizationRole(roles: CommunityRole[]) {
+  return roles.some((role) => ["restaurant-owner", "venue", "municipality", "nonprofit"].includes(role));
+}
 export type CommunityItem = {
   id: string;
   kind: "event" | "gem";

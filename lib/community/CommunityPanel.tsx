@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
-  communityEventsInWindow, communityRequest, communityWeekWindow,
+  communityEventsInWindow, communityRequest, communityWeekWindow, hasOrganizationRole,
 } from "./api";
 import type { CommunityComment, CommunityDraft, CommunityItem, CommunityMine } from "./api";
 import "./community.css";
@@ -128,6 +128,7 @@ function SubmitForm({ apiBase, onDone }: { apiBase: string; onDone: (msg: string
     </div>}
     <div className="gc-row">
       <label>Credit it to<input required maxLength={80} value={d.attribution} onChange={set("attribution")} placeholder="Your name or group, shown publicly" /></label>
+      <p className="gc-fine">For people, not promotion: explain what someone can do, who it is useful for, and practical details. Organization posts use the name assigned by Gosie's operator, not a name supplied here. Every post needs moderator approval.</p>
       <label>Source link (optional)<input type="url" value={d.sourceUrl} onChange={set("sourceUrl")} placeholder="https://" /></label>
     </div>
     <p className="gc-fine">If approved, the title, details, location, link, and credit above become public. Approval means a moderator found it relevant — it is not a guarantee of availability, price, or that plans won't change.</p>
@@ -144,15 +145,15 @@ function OwnerComment({ item, apiBase, onDone }: { item: CommunityItem; apiBase:
   if (item.kind !== "event" || item.expired || item.status !== "approved") return null;
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
-    try { await write(`/community/items/${encodeURIComponent(item.id)}/comments`, { text: text.trim() }, apiBase); setText(""); setOpen(false); onDone("Your note is waiting for review. It will appear under your restaurant's name."); }
+    try { await write(`/community/items/${encodeURIComponent(item.id)}/comments`, { text: text.trim() }, apiBase); setText(""); setOpen(false); onDone("Your note is waiting for review. It will appear under your organization's designated name."); }
     catch (err) { setError(errText(err, "Your note couldn't be sent.")); }
     finally { setBusy(false); }
   }
   return <div className="gc-owner">
-    {!open ? <button type="button" className="gc-link" onClick={() => setOpen(true)}>Add a note as your restaurant</button> :
+    {!open ? <button type="button" className="gc-link" onClick={() => setOpen(true)}>Add a note as your organization</button> :
       <form onSubmit={submit} className="gc-form gc-form-tight">
-        <label>Note for diners<textarea required maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} /></label>
-        <p className="gc-fine">Shown under your operator-designated restaurant name once approved. Business identity is not automatically verified.</p>
+        <label>Useful note for the community<textarea required maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} /></label>
+        <p className="gc-fine">Share practical details people need, not advertising. Shown under your operator-designated organization name only after moderation. Identity is not automatically verified.</p>
         {error && <p className="gc-inline-error" role="alert">{error}</p>}
         <div className="gc-actions"><button type="button" className="gc-btn gc-btn-ghost" onClick={() => setOpen(false)}>Cancel</button><button className="gc-btn" disabled={busy || !text.trim()}>{busy ? "Sending…" : "Send note"}</button></div>
       </form>}
@@ -188,8 +189,8 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
   const [mine, retryMine] = useLoad<CommunityMine>(signedIn ? "/community/mine" : null, apiBase, version);
   const roles = mine.status === "ready" ? mine.data.roles : [];
   const isMod = roles.includes("moderator");
-  const canSubmit = roles.includes("contributor") || roles.includes("restaurant-owner");
-  const isOwner = roles.includes("restaurant-owner");
+  const isOwner = hasOrganizationRole(roles);
+  const canSubmit = roles.includes("contributor") || isOwner;
   const [queue, retryQueue] = useLoad<{ items: CommunityItem[]; comments: CommunityComment[] }>(isMod ? "/community/moderation" : null, apiBase, version);
   const done = useCallback((msg: string) => { setMessage(msg); setVersion((v) => v + 1); }, []);
   const feedItems = feed.status === "ready" ? feed.data.items : [];
@@ -198,8 +199,8 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
   return <div className="gc-root">
     <header className="gc-head">
       <p className="gc-eyebrow">Gosie Communities</p>
-      <h2>Neighbourhood finds, thoughtfully reviewed.</h2>
-      <p className="gc-lede">Events and local gems suggested by contributors and designated venues, then reviewed by a moderator before appearing in the feed. Every card shows its public credit and review date.</p>
+      <h2>For people. Made better by local knowledge.</h2>
+      <p className="gc-lede">Gosie Communities helps people find useful events and local gems—not an advertising directory. People come first; invited contributors, restaurants, venues, municipalities, and nonprofits can share local knowledge, with every submission reviewed before it appears.</p>
       <p className="gc-fine">Approval means "worth knowing about" — not a guarantee of tickets, tables, prices, or opening hours. Check the source before you go.</p>
     </header>
     {message && <div className="gc-toast" role="status"><span>{message}</span><button type="button" onClick={() => setMessage("")} aria-label="Dismiss message">Close</button></div>}
@@ -217,7 +218,7 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
 
     {session.status === "loading" ? <Skeleton label="Checking your sign-in" /> :
       session.status === "error" ? <ErrorBox what="Your sign-in status" message={session.message} onRetry={retrySession} /> :
-      !signedIn ? <section className="gc-section gc-invite"><h3>Want to suggest something?</h3><p>Sign in to see your own suggestions and their review status. Sharing is open to invited contributors and restaurant owners.</p><a className="gc-btn" href={loginHref}>Sign in</a></section> :
+      !signedIn ? <section className="gc-section gc-invite"><h3>Want to help your community?</h3><p>Sign in to see your suggestions and their review status. Sharing is open to invited people and designated restaurants, venues, municipalities, and nonprofits. Organization access is assigned separately; it never allows self-publishing.</p><a className="gc-btn" href={loginHref}>Sign in</a></section> :
       <>
         <section className="gc-section" aria-labelledby="gc-mine-h">
           <div className="gc-section-head"><h3 id="gc-mine-h">Your suggestions</h3><span className="gc-private">Pending and rejected: you and moderators only</span></div>
@@ -226,7 +227,7 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
             mine.data.items.length + mine.data.comments.length === 0 ? <Empty title="You haven't shared anything yet.">{canSubmit ? "Use the form below — you'll see each suggestion's review status here." : "Your account isn't set up to share yet. You can still browse everything approved above."}</Empty> :
             <>
               {mine.data.items.length > 0 && <div className="gc-grid">{mine.data.items.map((item) => <ItemCard key={item.id} item={item} showStatus />)}</div>}
-              {mine.data.comments.length > 0 && <><h4 className="gc-subhead">Your restaurant notes</h4><ul className="gc-mine-comments">{mine.data.comments.map((c) => <CommentRow key={c.id} c={c} />)}</ul></>}
+              {mine.data.comments.length > 0 && <><h4 className="gc-subhead">Your organization notes</h4><ul className="gc-mine-comments">{mine.data.comments.map((c) => <CommentRow key={c.id} c={c} />)}</ul></>}
             </>}
         </section>
         {canSubmit && <section className="gc-section gc-submit" aria-labelledby="gc-submit-h"><h3 id="gc-submit-h">Suggest an event or gem</h3><SubmitForm apiBase={apiBase} onDone={done} /></section>}

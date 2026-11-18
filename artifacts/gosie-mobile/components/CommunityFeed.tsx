@@ -17,7 +17,7 @@ export function CommunityCard({ item, children }: { item: CommunityItem; childre
     <Text style={styles.meta}>{item.reviewedAt ? `Reviewed ${new Date(item.reviewedAt).toLocaleDateString()}` : 'Awaiting moderation'}</Text>
     <Text style={styles.body}>{item.why}</Text>
     {item.sourceUrl && <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL(item.sourceUrl!)} style={styles.button}><Text style={styles.buttonText}>Open contributor's source</Text></TouchableOpacity>}
-    {item.comments.map((comment) => <View key={comment.id} style={styles.comment}><Text style={styles.label}>{comment.attribution} · OWNER COMMENT</Text><Text style={styles.body}>{comment.text}</Text></View>)}
+    {item.comments.map((comment) => <View key={comment.id} style={styles.comment}><Text style={styles.label}>{comment.attribution} · ORGANIZATION NOTE</Text><Text style={styles.body}>{comment.text}</Text></View>)}
     {children}
   </View>;
 }

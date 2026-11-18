@@ -84,13 +84,25 @@ describe("shared Gosie web and Week Ahead Communities", () => {
   it("designated owners can send an event note for separate review", async () => {
     signedIn = true; roles = ["restaurant-owner"]; approved = [item()];
     render(<CommunityPanel />);
-    fireEvent.click(await screen.findByRole("button", { name: "Add a note as your restaurant" }));
-    fireEvent.change(screen.getByLabelText("Note for diners"), { target: { value: "Synthetic owner note" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Add a note as your organization" }));
+    fireEvent.change(screen.getByLabelText("Useful note for the community"), { target: { value: "Synthetic owner note" } });
     fireEvent.click(screen.getByRole("button", { name: "Send note" }));
-    expect(await screen.findByText("Your note is waiting for review. It will appear under your restaurant's name.")).toBeInTheDocument();
+    expect(await screen.findByText("Your note is waiting for review. It will appear under your organization's designated name.")).toBeInTheDocument();
     expect(writes[0].path).toBe("/community/items/event-1/comments");
     expect(writes[0].body).toEqual({ text: "Synthetic owner note" });
     expect(writes[0].body).not.toHaveProperty("attribution");
+  });
+  it.each(["venue", "municipality", "nonprofit"])("%s representatives can contribute without bypassing review", async (role) => {
+    signedIn = true; roles = [role]; approved = [item()];
+    render(<CommunityPanel />);
+    expect(await screen.findByText("Suggest an event or gem")).toBeInTheDocument();
+    expect(screen.getByText("For people. Made better by local knowledge.")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Add a note as your organization" }));
+    fireEvent.change(screen.getByLabelText("Useful note for the community"), { target: { value: "Synthetic practical details" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send note" }));
+    expect(await screen.findByText(/Your note is waiting for review/)).toBeInTheDocument();
+    expect(writes[0].body).toEqual({ text: "Synthetic practical details" });
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
   });
   it("keeps events on every actual day they overlap and evergreen gems outside date groups", async () => {
     approved = [item(), gem, item({ id: "outside", title: "Outside this week", startsAt: "2026-12-01T12:00:00Z", endsAt: "2026-12-01T14:00:00Z" })];

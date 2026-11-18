@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS gosie_community_roles (
   PRIMARY KEY (user_id, role),
   CHECK (role <> 'restaurant-owner' OR (restaurant_name IS NOT NULL AND length(trim(restaurant_name)) BETWEEN 1 AND 80))
 );
+-- Expand existing grants without replacing restaurant-owner identities.
+-- Explicit development/test schema application only; never startup DDL.
+BEGIN;
+ALTER TABLE gosie_community_roles ADD COLUMN IF NOT EXISTS organization_name TEXT;
+ALTER TABLE gosie_community_roles DROP CONSTRAINT IF EXISTS gosie_community_roles_role_check;
+ALTER TABLE gosie_community_roles ADD CONSTRAINT gosie_community_roles_role_check
+  CHECK (role IN ('contributor','restaurant-owner','venue','municipality','nonprofit','moderator'));
+ALTER TABLE gosie_community_roles DROP CONSTRAINT IF EXISTS gosie_community_roles_organization_check;
+ALTER TABLE gosie_community_roles ADD CONSTRAINT gosie_community_roles_organization_check
+  CHECK (role NOT IN ('venue','municipality','nonprofit') OR
+    (organization_name IS NOT NULL AND length(trim(organization_name)) BETWEEN 1 AND 80));
+COMMIT;
 CREATE TABLE IF NOT EXISTS gosie_community_items (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES gosie_users(id) ON DELETE CASCADE,

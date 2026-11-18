@@ -3,3 +3,4 @@
 - [Gosie promo playback](gosie-promo-playback.md) — show a poster-first play control; an idle video surface can cover the poster with a loader.
 - [Deployment runtime guard](deployment-runtime-guard.md) — use the documented deployment flag, not the platform environment label, for dev/test safety gates.
 - [Gosie discovery sources](gosie-discovery-sources.md) — keep Eventbrite and public web search distinct from the private Muse/Ticketmaster reference.
+- [Gosie Communities purpose](gosie-communities-purpose.md) — people first; organizations contribute useful local knowledge, not an advertising directory.
