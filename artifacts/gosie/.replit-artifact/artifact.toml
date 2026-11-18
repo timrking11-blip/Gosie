@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Gosie"
-description = "Gosie is a thoughtful personal-intelligence sidekick for the week and weekend ahead. This website introduces the product and offers interactive previews of its planning experience."
+description = "Gosie's illustrative promotional website and private planning-pilot application. Pilot signups remain closed pending release approval."
 version = "1.0.0"
 id = "artifacts/gosie"
 router = "path"
@@ -16,12 +16,7 @@ run = "pnpm --filter @workspace/gosie run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/gosie", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/gosie/dist/public"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = [ "pnpm", "--filter", "@workspace/gosie", "run", "serve" ]
 
 [services.env]
 PORT = "23967"

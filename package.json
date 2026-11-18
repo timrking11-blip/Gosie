@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.26.1",
   "scripts": {
-    "test": "pnpm --filter @workspace/gosie test"
+    "test": "pnpm --filter @workspace/gosie test",
+    "validate:gosie-promo": "node artifacts/gosie-video/validate.mjs"
   }
 }

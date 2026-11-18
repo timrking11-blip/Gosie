@@ -1,15 +1,8 @@
 /**
- * Semantic design tokens for the mobile app.
- *
- * These tokens mirror the naming conventions used in web artifacts (index.css)
- * so that multi-artifact projects share a cohesive visual identity.
- *
- * Replace the placeholder values below with values that match the project's
- * brand. If a sibling web artifact exists, read its index.css and convert the
- * HSL values to hex so both artifacts use the same palette.
- *
- * To add dark mode, add a `dark` key with the same token names.
- * The useColors() hook will automatically pick it up.
+ * Mobile semantic tokens. Shared light palette values and the base radius
+ * mirror design-system/gosie-week-ahead/tokens.css; run the mobile-token-sync
+ * check when either file changes. Mobile-only colors and dark-mode roles stay
+ * local to this app.
  */
 
 const colors = {
@@ -22,16 +15,16 @@ const colors = {
     cardForeground: '#0a1016',
     primary: '#17382b',
     primaryForeground: '#f5f0e5',
-    secondary: '#e3e7d8',
+    secondary: '#e5eadf',
     secondaryForeground: '#17382b',
-    muted: '#e9e4da',
+    muted: '#f2eee4',
     mutedForeground: '#59635e',
     accent: '#ebaf86',
     accentForeground: '#0a1016',
     destructive: '#946640',
     destructiveForeground: '#f5f0e5',
-    border: '#d4d2c3',
-    input: '#d4d2c3',
+    border: '#d8d7c9',
+    input: '#d8d7c9',
     forest: '#17382b',
     sage: '#99b6a5',
     cream: '#f5f0e5',
@@ -76,9 +69,8 @@ const colors = {
     bronze: '#946640',
   },
 
-  // Border radius (in px). Sync from the sibling web artifact's --radius
-  // CSS variable. This value applies to cards, buttons, inputs, and modals.
-  radius: 8,
+  // Shared base radius from --gosie-radius-base.
+  radius: 16,
 };
 
 export default colors;

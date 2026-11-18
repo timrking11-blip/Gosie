@@ -1,37 +1,26 @@
-import React, { useState } from 'react';
+import React, { useReducer, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import colors from '@/constants/colors';
+import {
+  createWeekendFeedbackState,
+  summarizeWeekendFeedback,
+  weekendContexts,
+  weekendFeedbackReducer,
+} from '../weekend-feedback';
+import {
+  budgetOptions,
+  rankWeekendSampleIdeas,
+  travelOptions,
+  type BudgetLimit,
+  type WeekendContext as Context,
+  type WeekendSampleIdea as Idea,
+  weekendSampleIdeas,
+} from '../weekend-samples';
 
 const C = colors.light;
-const contexts = ['All', 'Solo', 'Friends', 'Date', 'Group'] as const;
-type Context = (typeof contexts)[number];
-type Idea = {
-  title: string;
-  kind: string;
-  when: string;
-  budget: string;
-  budgetLevel: number;
-  travelMinutes: number;
-  fit: Record<Context, number>;
-  why: string;
-};
-const budgetOptions = [
-  { label: 'Up to $', value: 1 },
-  { label: 'Up to $$', value: 2 },
-  { label: 'Any', value: null },
-] as const;
-type BudgetLimit = (typeof budgetOptions)[number]['value'];
-const travelOptions = [10, 15, 25] as const;
-
-const ideas: Idea[] = [
-  { title: 'Late set at a small jazz room', kind: 'Music', when: 'Sat · evening', budget: '$$', budgetLevel: 2, travelMinutes: 20, fit: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, why: 'Sample interest: live music. This event and its details are fictional.' },
-  { title: 'Restored-print film night', kind: 'Film', when: 'Fri · 8 pm', budget: '$', budgetLevel: 1, travelMinutes: 12, fit: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, why: 'Sample interest: classic cinema. This event and its details are fictional.' },
-  { title: 'Long lunch, shared plates', kind: 'Food', when: 'Sun · midday', budget: '$$', budgetLevel: 2, travelMinutes: 15, fit: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, why: 'Sample interest: relaxed meals. No personal preference was used to create this fictional example.' },
-  { title: 'Riverside walk & market', kind: 'Outdoors', when: 'Sun · morning', budget: 'Free', budgetLevel: 0, travelMinutes: 8, fit: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, why: 'Sample interest: time outdoors. This event and its details are fictional.' },
-];
 
 function Header() {
   return (
@@ -145,20 +134,19 @@ function IdeaCard({
 }
 
 export default function WeekendScreen() {
-  const [context, setContext] = useState<Context>('All');
+  const [feedback, dispatchFeedback] = useReducer(
+    weekendFeedbackReducer,
+    undefined,
+    createWeekendFeedbackState,
+  );
+  const { context, savedIdeas, dismissedIdeas, ratings } = feedback;
   const [budgetLimit, setBudgetLimit] = useState<BudgetLimit>(2);
   const [travelLimit, setTravelLimit] = useState<(typeof travelOptions)[number]>(25);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [savedIdeas, setSavedIdeas] = useState<string[]>([]);
-  const [dismissedIdeas, setDismissedIdeas] = useState<string[]>([]);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const withinSampleLimits = ideas.filter((idea) =>
-    (budgetLimit === null || idea.budgetLevel <= budgetLimit) && idea.travelMinutes <= travelLimit,
-  );
-  const ranked = [...withinSampleLimits].sort((a, b) => b.fit[context] - a.fit[context]);
+  const ranked = rankWeekendSampleIdeas(weekendSampleIdeas, context, budgetLimit, travelLimit);
   const visibleIdeas = ranked.filter((idea) => !dismissedIdeas.includes(idea.title));
-  const dismissedList = ideas.filter((idea) => dismissedIdeas.includes(idea.title));
-  const ratedCount = Object.keys(ratings).length;
+  const dismissedList = weekendSampleIdeas.filter((idea) => dismissedIdeas.includes(idea.title));
+  const feedbackSummary = summarizeWeekendFeedback(feedback);
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" />
@@ -182,8 +170,8 @@ export default function WeekendScreen() {
           </View>
           <Text style={styles.contextPrompt}>Who's coming?</Text>
           <View style={styles.contextGroup} accessibilityRole="radiogroup" accessibilityLabel="Who's coming">
-            {contexts.map((choice) => (
-              <TouchableOpacity key={choice} onPress={() => setContext(choice)} accessibilityRole="radio" accessibilityState={{ selected: context === choice }} style={[styles.contextPill, context === choice && styles.contextSelected]}>
+            {weekendContexts.map((choice) => (
+              <TouchableOpacity key={choice} onPress={() => dispatchFeedback({ type: 'set-context', context: choice })} accessibilityRole="radio" accessibilityState={{ selected: context === choice }} style={[styles.contextPill, context === choice && styles.contextSelected]}>
                 <Text style={[styles.contextText, context === choice && styles.contextSelectedText]}>{choice}</Text>
               </TouchableOpacity>
             ))}
@@ -191,7 +179,7 @@ export default function WeekendScreen() {
           <View style={styles.limitPanel}>
             <Text style={styles.limitHeading}>Try sample limits</Text>
             <Text style={styles.limitLabel}>Budget cap · illustrative</Text>
-            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample budget cap">
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample budget cap, choose one option">
               {budgetOptions.map((option) => {
                 const selected = budgetLimit === option.value;
                 return (
@@ -199,8 +187,8 @@ export default function WeekendScreen() {
                     key={option.label}
                     onPress={() => setBudgetLimit(option.value)}
                     accessibilityRole="radio"
-                    accessibilityLabel={`${option.label} sample budget cap`}
-                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Budget cap: ${option.label}`}
+                    accessibilityState={{ checked: selected, selected }}
                     style={[styles.limitOption, selected && styles.limitOptionSelected]}
                   >
                     <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{option.label}</Text>
@@ -209,7 +197,7 @@ export default function WeekendScreen() {
               })}
             </View>
             <Text style={styles.limitLabel}>Travel cap · illustrative</Text>
-            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample travel cap">
+            <View style={styles.limitOptions} accessibilityRole="radiogroup" accessibilityLabel="Sample travel cap, choose one option">
               {travelOptions.map((minutes) => {
                 const selected = travelLimit === minutes;
                 return (
@@ -217,8 +205,8 @@ export default function WeekendScreen() {
                     key={minutes}
                     onPress={() => setTravelLimit(minutes)}
                     accessibilityRole="radio"
-                    accessibilityLabel={`Up to ${minutes} minutes sample travel cap`}
-                    accessibilityState={{ selected }}
+                    accessibilityLabel={`Travel cap: up to ${minutes} minutes`}
+                    accessibilityState={{ checked: selected, selected }}
                     style={[styles.limitOption, selected && styles.limitOptionSelected]}
                   >
                     <Text style={[styles.limitOptionText, selected && styles.limitOptionTextSelected]}>{minutes} min</Text>
@@ -233,7 +221,7 @@ export default function WeekendScreen() {
           </View>
           <View style={styles.demoNotice} accessibilityLiveRegion="polite">
             <Text style={styles.demoNoticeTitle}>Demo feedback · current session only</Text>
-            <Text style={styles.demoNoticeSummary}>{savedIdeas.length} saved · {dismissedIdeas.length} dismissed · {ratedCount} rated</Text>
+            <Text style={styles.demoNoticeSummary}>{feedbackSummary.saved} saved · {feedbackSummary.dismissed} dismissed · {feedbackSummary.rated} rated</Text>
             <Text style={styles.demoNoticeBody}>These actions are temporary and local to this screen. Nothing is stored or synced; state can reset when you reload or close the app.</Text>
           </View>
 
@@ -252,11 +240,9 @@ export default function WeekendScreen() {
                 saved={savedIdeas.includes(idea.title)}
                 rating={ratings[idea.title] ?? null}
                 onToggle={() => setExpanded(expanded === idea.title ? null : idea.title)}
-                onSave={() => setSavedIdeas((current) => current.includes(idea.title)
-                  ? current.filter((title) => title !== idea.title)
-                  : [...current, idea.title])}
-                onDismiss={() => setDismissedIdeas((current) => current.includes(idea.title) ? current : [...current, idea.title])}
-                onRate={(rating) => setRatings((current) => ({ ...current, [idea.title]: rating }))}
+                onSave={() => dispatchFeedback({ type: 'toggle-saved', title: idea.title })}
+                onDismiss={() => dispatchFeedback({ type: 'dismiss', title: idea.title })}
+                onRate={(rating) => dispatchFeedback({ type: 'rate', title: idea.title, rating })}
               />
             ))}
           </View>
@@ -270,7 +256,7 @@ export default function WeekendScreen() {
                 <View key={idea.title} style={styles.dismissedRow}>
                   <Text style={styles.dismissedTitle}>{idea.title}</Text>
                   <TouchableOpacity
-                    onPress={() => setDismissedIdeas((current) => current.filter((title) => title !== idea.title))}
+                    onPress={() => dispatchFeedback({ type: 'restore', title: idea.title })}
                     accessibilityRole="button"
                     accessibilityLabel={`Restore ${idea.title}`}
                     style={styles.restoreButton}
@@ -329,11 +315,11 @@ const styles = StyleSheet.create({
   limitHeading: { color: C.forest, fontFamily: 'Manrope_700Bold', fontSize: 12 },
   limitLabel: { color: C.mutedForeground, fontFamily: 'Manrope_600SemiBold', fontSize: 10, marginTop: 10, marginBottom: 6 },
   limitOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  limitOption: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, backgroundColor: C.cream },
+  limitOption: { maxWidth: '100%', minHeight: 44, flexShrink: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, backgroundColor: C.cream },
   limitOptionSelected: { borderColor: C.forest, backgroundColor: C.forest },
-  limitOptionText: { color: C.mutedForeground, fontFamily: 'Manrope_700Bold', fontSize: 11 },
+  limitOptionText: { flexShrink: 1, color: C.mutedForeground, fontFamily: 'Manrope_700Bold', fontSize: 11, textAlign: 'center' },
   limitOptionTextSelected: { color: C.cream },
-  limitNote: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, lineHeight: 14, marginTop: 10 },
+  limitNote: { color: C.mutedForeground, fontFamily: 'Manrope_400Regular', fontSize: 9, marginTop: 10 },
   preferenceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 9 },
   preference: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, backgroundColor: C.secondary, paddingHorizontal: 8, paddingVertical: 7 },
   preferenceText: { color: C.forest, fontFamily: 'Manrope_600SemiBold', fontSize: 9 },

@@ -1,0 +1,4 @@
+# Repository administrators must enable required code-owner review in branch
+# protection. This file alone does not enforce review or change repository rules.
+/research/gosie/ @timrking11-blip
+/.github/workflows/gosie-research.yml @timrking11-blip

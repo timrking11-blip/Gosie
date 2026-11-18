@@ -3,24 +3,51 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { validatePromoExports } from "./validate.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const workspace = path.resolve(here, "../..");
 const htmlPath = path.join(here, "render.html");
-const outputDir = path.join(workspace, "generated-artifacts/gosie-video-frames");
-const silentOutputPath = path.join(workspace, "generated-artifacts/gosie-promo.mp4");
-const narratedOutputPath = path.join(workspace, "generated-artifacts/gosie-promo-narrated.mp4");
+const portrait = process.argv.includes("--portrait");
+const width = portrait ? 1080 : 1280;
+const height = portrait ? 1920 : 720;
+const format = portrait ? "portrait" : "landscape";
+const outputDir = path.join(workspace, `generated-artifacts/gosie-video-${format}-frames`);
+const silentOutputPath = path.join(
+  workspace,
+  `generated-artifacts/gosie-promo${portrait ? "-portrait" : ""}.mp4`,
+);
+const narratedOutputPath = path.join(
+  workspace,
+  `generated-artifacts/gosie-promo${portrait ? "-portrait" : ""}-narrated.mp4`,
+);
 const fps = 24;
 const duration = 18.5;
 const frameCount = Math.round(fps * duration);
 const port = 9227;
 const narration = [
-  { start: 0.15, text: "A little help for everything ahead." },
-  { start: 2.95, text: "Week Ahead shows a fictional week of plans and sample priorities." },
-  { start: 7.4, text: "Weekend Ahead shifts sample ideas with the social context you choose." },
-  { start: 11.8, text: "Sample interests, not personal history." },
-  { start: 15, text: "Private prototype. Release date to be announced." },
+  { start: 0.15, end: 2.45, text: "A little help for everything ahead." },
+  { start: 2.95, end: 6.85, text: "Week Ahead shows a fictional week of plans and sample priorities." },
+  { start: 7.4, end: 11.25, text: "Weekend Ahead shifts sample ideas with the social context you choose." },
+  { start: 11.8, end: 14.35, text: "Sample interests, not personal history." },
+  { start: 15, end: 18.45, text: "Private prototype. Release date to be announced." },
 ];
+const subtitlePath = path.join(here, "gosie-promo.en.srt");
+const srtTimestamp = (seconds) => {
+  const milliseconds = Math.round(seconds * 1000);
+  const hours = Math.floor(milliseconds / 3600000);
+  const minutes = Math.floor((milliseconds % 3600000) / 60000);
+  const wholeSeconds = Math.floor((milliseconds % 60000) / 1000);
+  const remainder = milliseconds % 1000;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(wholeSeconds).padStart(2, "0")},${String(remainder).padStart(3, "0")}`;
+};
+const srt = narration
+  .map(
+    (line, index) =>
+      `${index + 1}\n${srtTimestamp(line.start)} --> ${srtTimestamp(line.end)}\n${line.text}`,
+  )
+  .join("\n\n");
+await writeFile(subtitlePath, `${srt}\n`, "utf8");
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
@@ -112,12 +139,12 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Page.setDeviceMetricsOverride", {
-    width: 1280,
-    height: 720,
+    width,
+    height,
     deviceScaleFactor: 1,
     mobile: false,
   });
-  await send("Page.navigate", { url: `file://${htmlPath}` });
+  await send("Page.navigate", { url: `file://${htmlPath}?format=${format}` });
   await sleep(1200);
 
   const fontResult = await send("Runtime.evaluate", {
@@ -133,6 +160,10 @@ try {
     throw new Error(`Required Gosie fonts did not load: ${JSON.stringify(fontStatus)}`);
   }
   console.log(`Loaded brand fonts: ${JSON.stringify(fontStatus)}`);
+  await send("Runtime.evaluate", {
+    expression: `window.setCaptions(${JSON.stringify(narration)})`,
+    returnByValue: true,
+  });
 
   for (let frame = 0; frame < frameCount; frame++) {
     const seconds = frame / fps;
@@ -180,7 +211,7 @@ const ffmpegArgs = [
   silentOutputPath,
 ];
 await runFfmpeg(ffmpegArgs);
-console.log(`Exported silent promo ${silentOutputPath} (${duration}s, 1280x720, ${fps}fps)`);
+console.log(`Exported silent promo ${silentOutputPath} (${duration}s, ${width}x${height}, ${fps}fps)`);
 
 const narrationDir = await mkdtemp(path.join(tmpdir(), "gosie-promo-narration-"));
 try {
@@ -233,3 +264,12 @@ try {
 } finally {
   await rm(narrationDir, { recursive: true, force: true });
 }
+
+await validatePromoExports({
+  silentPath: silentOutputPath,
+  narratedPath: narratedOutputPath,
+  width,
+  height,
+  fps,
+  duration,
+});

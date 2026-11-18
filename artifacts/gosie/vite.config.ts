@@ -2,6 +2,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -30,6 +31,11 @@ if (!basePath) {
 export default defineConfig({
   base: basePath,
   plugins: [
+    TanStackRouterVite({
+      target: 'react',
+      routesDirectory: './src/routes',
+      generatedRouteTree: './src/routeTree.gen.ts',
+    }),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -57,7 +63,9 @@ export default defineConfig({
         'attached_assets',
       ),
     },
-    dedupe: ['react', 'react-dom'],
+    // Workspace packages can resolve different pnpm peer variants. Query hooks
+    // must share the same context instance as the root QueryClientProvider.
+    dedupe: ['react', 'react-dom', '@tanstack/react-query'],
   },
   root: path.resolve(import.meta.dirname),
   build: {
@@ -69,6 +77,12 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: `http://127.0.0.1:${process.env.API_PORT || 8791}`,
+        changeOrigin: false,
+      },
+    },
     fs: {
       strict: true,
       // Keep Vite's default secret-file protections when extending the deny list.

@@ -5,6 +5,9 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import colors from '@/constants/colors';
 import { PromoVideo } from '@/components/PromoVideo';
+import { CommunityCard, communityStyles } from '@/components/CommunityFeed';
+import { useCommunityItems } from '@/hooks/useCommunity';
+import { communityEventsInWindow, communityWeekWindow } from '../../../../lib/community/api';
 
 const C = colors.light;
 const events = [
@@ -85,6 +88,10 @@ function EventGroup({ heading, view }: { heading: string; view: 'category' | 'ch
 }
 
 function WeekScreen() {
+  const community = useCommunityItems();
+  const window = communityWeekWindow();
+  const communityEvents = communityEventsInWindow(community.items, window.start, window.end);
+  const communityGems = community.items.filter((item) => item.kind === 'gem');
   const [view, setView] = useState<'category' | 'chrono'>('category');
   const headings = view === 'category' ? groups : days;
   const visibleGroups = useMemo(() => headings.filter((heading) =>
@@ -162,6 +169,19 @@ function WeekScreen() {
           <Feather name="arrow-up-right" size={17} color={C.forest} />
         </View>
         <Text style={styles.disclaimer}>Illustrative preview · fictional data · not real listings, prices or availability.</Text>
+        <View style={{ padding: 16, gap: 12 }}>
+          <Text style={communityStyles.title}>From the community</Text>
+          <Text style={communityStyles.body}>Separate from the fictional week above. Current approved events for this actual week, plus untimed discoveries.</Text>
+          <TouchableOpacity accessibilityRole="button" style={communityStyles.button} onPress={() => void community.refresh()}><Text style={communityStyles.buttonText}>Refresh community finds</Text></TouchableOpacity>
+          {community.loading ? <Text style={communityStyles.body}>Loading approved finds…</Text> : community.error ? <Text accessibilityRole="alert" style={communityStyles.body}>Community service unavailable: {community.error}</Text> : <>
+            <Text style={communityStyles.label}>THIS WEEK · {window.start.toLocaleDateString()} – {window.end.toLocaleDateString()}</Text>
+            {communityEvents.length === 0 && <Text style={communityStyles.body}>No approved timed events this week.</Text>}
+            {communityEvents.map((item) => <CommunityCard key={item.id} item={item} />)}
+            <Text style={communityStyles.label}>EVERGREEN DISCOVERY · NOT SCHEDULED</Text>
+            {communityGems.length === 0 && <Text style={communityStyles.body}>No approved hidden gems yet.</Text>}
+            {communityGems.map((item) => <CommunityCard key={item.id} item={item} />)}
+          </>}
+        </View>
         <View style={styles.bottomNote}><Text style={styles.bottomNoteText}>A little help for everything ahead.</Text><Text style={styles.bottomBrand}>gosie.</Text></View>
       </ScrollView>
     </SafeAreaView>

@@ -1,0 +1,15 @@
+{
+  "name": "@workspace/api-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node production-server.js",
+    "test": "node --test hardening.test.js restart-persistence.test.js weekend-engine.test.js research-catalog.test.js brave-discovery.test.js"
+  },
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.7.0",
+    "pg": "^8.23.1"
+  }
+}

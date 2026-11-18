@@ -7,3 +7,5 @@ attached_assets/
 .cache/
 generated-artifacts/
 *.tsbuildinfo
+/research/gosie/.run-lock
+/research/gosie/*.tmp

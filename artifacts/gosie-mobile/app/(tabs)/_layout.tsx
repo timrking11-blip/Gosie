@@ -38,6 +38,13 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => <Feather name="sun" size={20} color={focused ? colors.primary : colors.mutedForeground} />,
         }}
       />
+      <Tabs.Screen
+        name="communities"
+        options={{
+          title: 'Communities',
+          tabBarIcon: ({ focused }) => <Feather name="users" size={20} color={focused ? colors.primary : colors.mutedForeground} />,
+        }}
+      />
     </Tabs>
   );
 }

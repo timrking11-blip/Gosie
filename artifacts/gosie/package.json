@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.ts --host 0.0.0.0",
+    "dev": "node dev-server.cjs",
     "build": "vite build --config vite.config.ts",
-    "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
+    "serve": "node ../api-server/production-server.js",
+    "check:release-privacy": "node release-privacy-check.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:mobile": "vitest run --config vitest.mobile.config.ts",
+    "test:dev-server": "node --test dev-server-access.test.cjs"
   },
   "devDependencies": {
+    "@workspace/community": "workspace:*",
+    "@tanstack/router-plugin": "^1.169.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
@@ -79,6 +84,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@workspace/api-client-react": "workspace:*",
     "@tanstack/react-router": "^1.170.46",
     "vitest": "^5.0.5"
   }

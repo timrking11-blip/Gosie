@@ -1,3 +1,12 @@
 - [Migration environment](migration-environment.md) — failed auto-scaffolding can leave artifact packages without a workspace root; testing helper availability differs from its skill.
 - [Post-merge service environment](post-merge-service-env.md) — standalone setup scripts may need to load required `PORT` and `BASE_PATH` values from the artifact manifest.
 - [Gosie promo playback](gosie-promo-playback.md) — show a poster-first play control; an idle video surface can cover the poster with a loader.
+- [Gosie mobile promo scope](gosie-promo-scope.md) — match the website video; add subtitles only, without changing the main website.
+- [Deployment runtime guard](deployment-runtime-guard.md) — use the documented deployment flag, not the platform environment label, for dev/test safety gates.
+- [Gosie discovery sources](gosie-discovery-sources.md) — keep Eventbrite and public web search distinct from the private Muse/Ticketmaster reference.
+- [Gosie Communities purpose](gosie-communities-purpose.md) — people first; organizations contribute useful local knowledge, not an advertising directory.
+- [Calendar-aware launch intent](gosie-calendar-intent.md) — launch planning must account for existing leisure commitments, not just offer calendar export.
+- [Brave Search result handling](brave-search-results.md) — connected Brave results must stay transient; never persist snippets or cached results in Gosie catalogs.
+- [Reviewed lead approval](reviewed-lead-approval.md) — changes to approved manual leads need renewed independent review; curation is not live availability verification.
+- [Workspace query context](workspace-query-context.md) — context-bearing libraries must share one runtime across workspace packages; React deduplication alone is insufficient.
+- [Gosie pilot cohort](gosie-pilot-cohort.md) — five invited participants plus one owner account; the extra place grants no administrative permissions or publishing approval.

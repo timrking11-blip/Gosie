@@ -5,12 +5,22 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronUp,
-  Compass,
   Info,
   MapPin,
   Sparkles,
   Tag,
 } from 'lucide-react';
+import { CommunityPanel, CommunityDiscoveries } from '@workspace/community/panel';
+import PersonalPlans from './components/PersonalPlans';
+import WeekendPreferences from './components/WeekendPreferences';
+import ReviewedDiscoveries from './components/ReviewedDiscoveries';
+import {
+  defaultWeekendPreferences,
+  rankSampleIdeas,
+  sampleWeekendIdeas,
+  type SocialContext,
+  type WeekendPreferences as Preferences,
+} from './lib/weekend-discovery';
 
 type Weekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 type EventCategory = 'Work' | 'Wellbeing' | 'Home' | 'Social';
@@ -23,18 +33,6 @@ type WeekEvent = {
   note: string;
 };
 type ActionItem = { id: string; title: string; detail: string; done: boolean };
-type Context = 'All' | 'Solo' | 'Friends' | 'Date' | 'Group';
-type Outing = {
-  id: string;
-  title: string;
-  category: string;
-  when: string;
-  contextScores: Record<Context, number>;
-  budget: string;
-  travel: string;
-  explanation: string;
-};
-
 const weekdays: Weekday[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const categories: EventCategory[] = ['Work', 'Wellbeing', 'Home', 'Social'];
 
@@ -60,30 +58,6 @@ const sampleActions: ActionItem[] = [
   { id: 'a2', title: 'Put a little space around Friday', detail: 'Keep one evening unclaimed, even if only for an hour.', done: false },
   { id: 'a3', title: 'Check the everyday essentials', detail: 'A quick look at the week’s basics before they become urgent.', done: false },
   { id: 'a4', title: 'Make a weekend idea feel possible', detail: 'Pick a time window, not a whole itinerary.', done: false },
-];
-
-const contexts: Context[] = ['All', 'Solo', 'Friends', 'Date', 'Group'];
-const outings: Outing[] = [
-  {
-    id: 'o1', title: 'A late set in a listening room', category: 'Music', when: 'Saturday · evening',
-    contextScores: { All: 9, Solo: 7, Friends: 7, Date: 10, Group: 5 }, budget: '$$', travel: '20 min',
-    explanation: 'A made-up example for a cozy night out. Its higher Date score is a fixed sample number, not a learned preference or a real venue recommendation.',
-  },
-  {
-    id: 'o2', title: 'Restored film, little theater', category: 'Film', when: 'Friday · after dark',
-    contextScores: { All: 8, Solo: 10, Friends: 7, Date: 8, Group: 6 }, budget: '$', travel: '12 min',
-    explanation: 'A fictional classic-film plan with a relaxed solo score. Timing, travel, and cost are illustrative labels only.',
-  },
-  {
-    id: 'o3', title: 'Long lunch, shared plates', category: 'Food', when: 'Sunday · midday',
-    contextScores: { All: 8, Solo: 4, Friends: 10, Date: 7, Group: 9 }, budget: '$$', travel: '15 min',
-    explanation: 'A sample long-lunch idea that ranks higher for Friends and Group in this preset score set. No restaurant or availability is being claimed.',
-  },
-  {
-    id: 'o4', title: 'Riverside walk & small market', category: 'Outdoors', when: 'Sunday · morning',
-    contextScores: { All: 7, Solo: 9, Friends: 8, Date: 6, Group: 8 }, budget: 'Free', travel: '8 min',
-    explanation: 'An easy fictional option when you want fresh air without much planning. Score values are fixed examples and only change the order.',
-  },
 ];
 
 const daysShort: Record<Weekday, string> = {
@@ -118,7 +92,7 @@ function useLocalActionItems() {
   return { items, toggle };
 }
 
-function BrandHeader({ active }: { active: 'week' | 'outings' }) {
+function BrandHeader({ active }: { active: 'week' | 'outings' | 'communities' }) {
   return (
     <header className="topbar">
       <Link href="/" className="brand-lockup" aria-label="Gosie, Week Ahead">
@@ -128,8 +102,9 @@ function BrandHeader({ active }: { active: 'week' | 'outings' }) {
         <nav className="nav-links" aria-label="Main navigation">
           <Link href="/" className={`nav-link${active === 'week' ? ' active' : ''}`} aria-current={active === 'week' ? 'page' : undefined}>Week ahead</Link>
           <Link href="/outings" className={`nav-link${active === 'outings' ? ' active' : ''}`} aria-current={active === 'outings' ? 'page' : undefined}>Weekend ideas</Link>
+          <Link href="/communities" className={`nav-link${active === 'communities' ? ' active' : ''}`} aria-current={active === 'communities' ? 'page' : undefined}>Communities</Link>
         </nav>
-        <span className="prototype-label">Illustrative preview</span>
+        <span className="prototype-label">{active === 'communities' ? 'Moderated community' : 'Illustrative preview'}</span>
       </div>
     </header>
   );
@@ -216,7 +191,7 @@ function EventSchedule() {
   return (
     <section className="surface-card" aria-labelledby="schedule-heading">
       <div className="section-title-row">
-        <div><span className="section-kicker">The week ahead</span><h2 className="section-title" id="schedule-heading">Your week, at a glance</h2></div>
+        <div><span className="section-kicker">Illustrative sample</span><h2 className="section-title" id="schedule-heading">A fictional week, at a glance</h2></div>
         <div className="view-switch" aria-label="Event grouping">
           <button type="button" aria-pressed={view === 'chronological'} onClick={() => setView('chronological')}>By day</button>
           <button type="button" aria-pressed={view === 'category'} onClick={() => setView('category')}>By kind</button>
@@ -274,10 +249,11 @@ function WeekAheadPage() {
         <div className="intro">
           <span className="eyebrow">A little help for everything ahead</span>
           <h1>Make space for <em>your week.</em></h1>
-          <p className="intro-copy">A thoughtful view of what’s coming, plus a few small anchors to make the days feel more manageable. Everything here is fictional sample content—not your calendar.</p>
+          <p className="intro-copy">A thoughtful view of what’s coming, plus a few small anchors to make the days feel more manageable. The sample week below is fictional. Plans you add stay in this browser; Gosie is not connected to your calendar.</p>
           <DemoBadge />
         </div>
         <Summary />
+        <PersonalPlans />
         <div className="content-grid">
           <EventSchedule />
           <aside className="aside-column" aria-label="Planning notes">
@@ -285,43 +261,42 @@ function WeekAheadPage() {
             <WeekendTeaser />
           </aside>
         </div>
+        <CommunityDiscoveries communityHref={`${import.meta.env.BASE_URL}communities`} />
         <Footer />
       </main>
     </div>
   );
 }
 
-function OutingCard({ outing, score, context, rank }: { outing: Outing; score: number; context: Context; rank: number }) {
+function OutingCard({ sample, context, rank }: { sample: ReturnType<typeof rankSampleIdeas>['included'][number]; context: SocialContext; rank: number }) {
   const [expanded, setExpanded] = useState(false);
+  const { idea: outing, score, reasons } = sample;
   return (
     <article className="outing-card">
       <div className="outing-top">
         <span className="outing-category">{outing.category} · idea {String(rank).padStart(2, '0')}</span>
-        <span className="outing-score" aria-label={`Sample context score ${score} out of 10`}>{score}<small> / 10</small></span>
+        <span className="outing-score" aria-label={`Illustrative fit score ${score} out of 10`}>{score}<small> / 10</small></span>
       </div>
       <h4>{outing.title}</h4>
       <div className="outing-when">{outing.when}</div>
       <div className="outing-labels">
-        <span className="outing-label"><Tag size={12} aria-hidden="true" />Budget · {outing.budget}</span>
-        <span className="outing-label"><MapPin size={12} aria-hidden="true" />Travel · {outing.travel}</span>
+        <span className="outing-label"><Tag size={12} aria-hidden="true" />Fictional cost · ${outing.sampleCostUsd}</span>
+        <span className="outing-label"><MapPin size={12} aria-hidden="true" />Fictional travel · {outing.sampleTravelMinutes} min</span>
       </div>
       <div className="outing-contextline" aria-label="Fixed sample scores by context">
-        {contexts.map((choice) => <span className={`context-score${choice === context ? ' is-selected' : ''}`} key={choice}>{choice} {outing.contextScores[choice]}/10</span>)}
+        {(['All', 'Solo', 'Friends', 'Date', 'Group'] as SocialContext[]).map((choice) => <span className={`context-score${choice === context ? ' is-selected' : ''}`} key={choice}>{choice} {outing.contextScores[choice]}/10</span>)}
       </div>
-      <button className="explanation-toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)}>
-        <span>{expanded ? 'Close the why' : 'Why this might fit'}</span>{expanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
+      <button className="explanation-toggle" type="button" aria-expanded={expanded} aria-controls={`why-${outing.id}`} onClick={() => setExpanded((current) => !current)}>
+        <span>{expanded ? 'Close the why' : 'Why this sample is ranked here'}</span>{expanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
       </button>
-      {expanded && <p className="explanation-copy">{outing.explanation}</p>}
+      {expanded && <div className="explanation-copy" id={`why-${outing.id}`}>{reasons.map((reason, index) => <p key={`${outing.id}-reason-${index}`}>{reason}</p>)}</div>}
     </article>
   );
 }
 
 function OutingsPage() {
-  const [context, setContext] = useState<Context>('All');
-  const ranked = useMemo(
-    () => outings.slice().sort((a, b) => b.contextScores[context] - a.contextScores[context]),
-    [context],
-  );
+  const [preferences, setPreferences] = useState<Preferences>(defaultWeekendPreferences);
+  const ranking = useMemo(() => rankSampleIdeas(sampleWeekendIdeas, preferences), [preferences]);
   return (
     <div className="app-shell">
       <BrandHeader active="outings" />
@@ -331,29 +306,50 @@ function OutingsPage() {
           <div>
             <span className="eyebrow">Weekend ahead · life in motion</span>
             <h2>Leave room for <em>something good.</em></h2>
-            <p>A late set, a restored film, a long lunch with friends. Choose who’s coming and the same set of fictional ideas will reorder using visible, fixed example scores.</p>
+            <p>A few fictional ideas, reordered by the choices you save on this device. The list is a demo—not live event discovery.</p>
           </div>
-          <div className="weekend-note"><strong>Just an illustration</strong>Sample costs and travel labels are fixed. These are not real listings, prices, or availability.</div>
+          <div className="weekend-note"><strong>Just an illustration</strong>This preview is not connected to live event sources. These are sample ideas, not real listings, prices, or availability.</div>
         </section>
-        <section className="context-panel" aria-labelledby="context-heading">
-          <div className="context-panel-head">
-            <div><h3 id="context-heading">Who’s coming along?</h3><p>Change the context to see the order shift—nothing is added or removed.</p></div>
-            <Compass size={23} aria-hidden="true" />
-          </div>
-          <div className="context-options" role="group" aria-label="Select social context">
-            {contexts.map((choice) => (
-              <button type="button" key={choice} aria-pressed={context === choice} onClick={() => setContext(choice)}>{choice}</button>
-            ))}
-          </div>
-        </section>
+        <WeekendPreferences onPreferencesChange={setPreferences} />
+        <ReviewedDiscoveries />
         <div className="outing-results-head">
-          <h3>Ideas to keep in your pocket</h3><span>Ordered for {context} · {ranked.length} fictional ideas</span>
+          <h3>Fictional sample ideas</h3><span>Ordered for {preferences.context} · {ranking.included.length} in view</span>
         </div>
-        <section className="outing-grid" aria-label={`Outing ideas for ${context}`}>
-          {ranked.map((outing, index) => <OutingCard key={outing.id} outing={outing} score={outing.contextScores[context]} context={context} rank={index + 1} />)}
-        </section>
-        <div className="ranking-note"><Info size={15} aria-hidden="true" /><span>These context scores are fixed sample numbers used only to reorder the same four ideas. Gosie does not learn preferences here. Budget and travel labels cannot be edited.</span></div>
+        {ranking.included.length ? (
+          <section className="outing-grid" aria-label={`Fictional sample ideas for ${preferences.context}`}>
+            {ranking.included.map((sample, index) => <OutingCard key={sample.idea.id} sample={sample} context={preferences.context} rank={index + 1} />)}
+          </section>
+        ) : (
+          <p className="sample-empty">No fictional examples fit both hard limits. Clear or widen a limit to see the sample ideas again.</p>
+        )}
+        {ranking.excluded.length > 0 && (
+          <details className="excluded-samples">
+            <summary>Why {ranking.excluded.length} fictional {ranking.excluded.length === 1 ? 'idea is' : 'ideas are'} excluded by your limits</summary>
+            <ul>
+              {ranking.excluded.map(({ idea, reasons }) => (
+                <li key={idea.id}>
+                  <strong>{idea.title}</strong>
+                  <ul>{reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        <div className="ranking-note"><Info size={15} aria-hidden="true" /><span>These are {sampleWeekendIdeas.length} fictional examples across arts, festivals, community, sports, markets, and more. Their tags, score, cost, and travel figures are sample values—not live listings or verified facts. Interests and context only reorder eligible examples; explicit limits exclude them with a reason.</span></div>
         <Footer />
+      </main>
+    </div>
+  );
+}
+
+function CommunitiesPage() {
+  return (
+    <div className="app-shell">
+      <BrandHeader active="communities" />
+      <main className="page-wrap">
+        <p className="section-note">This feed contains moderated contributor suggestions, not the fictional sample data shown elsewhere in this preview.</p>
+        <CommunityPanel />
+        <footer className="app-footer">Gosie Communities · contributor-supplied details · check the source before going.</footer>
       </main>
     </div>
   );
@@ -381,6 +377,7 @@ function Router() {
     <Switch key={location}>
       <Route path="/" component={WeekAheadPage} />
       <Route path="/outings" component={OutingsPage} />
+      <Route path="/communities" component={CommunitiesPage} />
       <Route component={NotFoundPage} />
     </Switch>
   );

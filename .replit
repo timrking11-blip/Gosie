@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-base-3.13"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [workflows]
 runButton = "Project"
@@ -6,11 +6,21 @@ runButton = "Project"
 [[ports]]
 localPort = 8081
 externalPort = 8081
+exposeLocalhost = true
+
+[[ports]]
+localPort = 8791
+externalPort = 3003
+exposeLocalhost = true
 
 [[ports]]
 localPort = 21101
 externalPort = 3000
 exposeLocalhost = true
+
+[[ports]]
+localPort = 21102
+externalPort = 4200
 
 [[ports]]
 localPort = 23967
@@ -26,3 +36,11 @@ timeoutMs = 180000
 
 [deployment]
 deploymentTarget = "cloudrun"
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.development]
+BRAVE_SEARCH_ENABLED = "1"

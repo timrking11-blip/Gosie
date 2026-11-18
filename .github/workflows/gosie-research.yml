@@ -1,0 +1,56 @@
+name: Gosie public experience research
+
+on:
+  workflow_dispatch:
+    inputs:
+      scheduled_window:
+        description: Respect the configured weekly timezone window
+        type: boolean
+        default: false
+  # NOT ACTIVE. Separate owner approval is required before uncommenting.
+  # Hourly UTC polling lets the runner honor local timezone/DST weekly semantics.
+  # schedule:
+  #   - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gosie-public-research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    if: ${{ vars.GOSIE_RESEARCH_ACTIVATED == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+      - name: Validate public contracts and safety fixtures
+        run: node --test research/gosie/*.test.cjs artifacts/api-server/research-catalog.test.js
+      - name: Run only the explicitly activated public research
+        env:
+          GOSIE_RESEARCH_ACTIVATED: ${{ vars.GOSIE_RESEARCH_ACTIVATED }}
+          BRAVE_SEARCH_API_KEY: ${{ secrets.GOSIE_RESEARCH_BRAVE_KEY }}
+          SCHEDULED_WINDOW: ${{ inputs.scheduled_window || github.event_name == 'schedule' }}
+        run: |
+          if [ "$SCHEDULED_WINDOW" = "true" ]; then
+            node research/gosie/cli.cjs run --scheduled
+          else
+            node research/gosie/cli.cjs run
+          fi
+      - name: Preserve public candidates for human repository review
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gosie-public-research-review
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            research/gosie/state.json
+            generated-artifacts/gosie-research/summary.json
