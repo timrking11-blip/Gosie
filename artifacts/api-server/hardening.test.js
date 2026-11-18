@@ -214,7 +214,11 @@ test('Week Ahead reviewed leads require moderator access, CSRF, and a second rev
   const auth = (user) => ({ cookie: user.cookie, csrf: user.csrf });
   assert.equal((await call(primary.port, 'GET', review)).status, 401);
   assert.equal((await call(primary.port, 'GET', review, { cookie: visitor.cookie })).status, 403);
-  assert.equal((await call(primary.port, 'POST', review, { ...auth(creator), body: draft })).status, 403);
+  assert.equal((await call(primary.port, 'POST', review, { cookie: creator.cookie, body: draft })).status, 403);
+  assert.equal((await call(primary.port, 'POST', review, { ...auth(visitor), body: draft })).status, 403);
+  assert.equal((await call(primary.port, 'POST', review, {
+    ...auth(creator), headers: { Origin: 'https://untrusted.invalid' }, body: draft,
+  })).status, 403);
   assert.equal((await call(primary.port, 'POST', review, { ...auth(creator), body: {
     ...draft, sourceUrl: 'http://127.0.0.1/private',
   } })).status, 400);
@@ -243,7 +247,10 @@ test('Week Ahead reviewed leads require moderator access, CSRF, and a second rev
   assert.equal(publicApproved.status, 200);
   assert.equal(publicApproved.json.entries.length, 1);
   assert.equal(publicApproved.json.entries[0].title, draft.title);
-  assert.equal(Object.hasOwn(publicApproved.json.entries[0], 'createdBy'), false);
+  assert.deepEqual(Object.keys(publicApproved.json.entries[0]).sort(), [
+    'id', ...Object.keys(draft), 'approval',
+  ].sort());
+  assert.equal((await publicList()).headers['cache-control'], 'no-store');
 
   const edited = await call(primary.port, 'PUT', `${review}/${id}`, {
     ...auth(reviewer), body: { ...draft, title: 'Edited synthetic test lead', version: approved.json.entry.version },
@@ -273,6 +280,12 @@ test('Week Ahead reviewed leads require moderator access, CSRF, and a second rev
     'SELECT action FROM gosie_week_ahead_discovery_history WHERE discovery_id=$1 ORDER BY id', [id],
   );
   assert.deepEqual(history.rows.map((row) => row.action), ['created', 'approved', 'edited', 'approved', 'withdrawn']);
+  await testPool.query('DELETE FROM gosie_users WHERE id=$1', [reviewer.id]);
+  const retained = await testPool.query('SELECT status,withdrawn_by FROM gosie_week_ahead_discoveries WHERE id=$1', [id]);
+  assert.equal(retained.rows[0].status, 'withdrawn');
+  assert.equal(retained.rows[0].withdrawn_by, null);
+  await testPool.query('DELETE FROM gosie_week_ahead_discoveries WHERE id=$1', [id]);
+  for (const user of [creator, reviewer, visitor]) await testPool.query('DELETE FROM gosie_users WHERE id=$1', [user.id]);
 });
 
 test('research catalog requires a session and exposes only the approved contract', async () => {

@@ -78,6 +78,33 @@ users, or claim pilot readiness until those checks and approvals are complete.
 
 ## Reviewed public research (disabled-by-default runner)
 
+### Manually reviewed Week Ahead leads
+
+`GET /api/week-ahead/discoveries` returns only approved source-backed entries,
+with no moderator identity, draft, withdrawn record, or private history.
+This is a separate data model from the repository research catalog below,
+community submissions, transient search results, and fictional ranked samples.
+
+The Week Ahead Weekend page provides **Moderator tools**. Existing authenticated
+accounts with an explicitly granted `moderator` role in `gosie_community_roles`
+can create and edit private drafts, independently approve another moderator's
+draft, and withdraw entries. Organization/contributor grants and the distinct
+community access-operator permission do not imply this role. This task grants no
+roles and opens no registration.
+
+Private routes are `GET/POST /api/week-ahead/discoveries/review`,
+`PUT .../review/:id`, and `POST .../review/:id/approve|withdraw`. Writes use
+session CSRF plus a server-checked version to reject stale decisions. Edits hide
+previously approved content until another moderator approves the new draft.
+Withdrawals are terminal for that record. Sources, retrieval timestamps and
+verified/estimated/unknown facts are required. Review snapshots are private;
+public reads project only the approved fact fields.
+
+Apply `schema.sql` to development explicitly through `apply-schema.js` (also
+called by post-merge setup). There is no startup/build-time production DDL.
+The Publish flow, if later authorized, handles the managed production schema.
+No entries are seeded and no live provider is enabled.
+
 `GET /api/discoveries` requires an authenticated session and reads only the
 validated repository-approved catalog, without startup writes. The initial
 catalog is empty. This is distinct from community submissions and fictional

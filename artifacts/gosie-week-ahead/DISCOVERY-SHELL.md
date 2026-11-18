@@ -1,8 +1,8 @@
 # Offline discovery shell
 
 The Weekend Ahead page has a separate public section for reviewed public-source
-leads. It loads only approved, schema-validated records from Gosie's authenticated
-API, with a source link, retrieval timestamp, short inclusion explanation, and
+leads. It loads only approved, schema-validated records from Gosie's public
+approved-list API, with a source link, retrieval timestamp, short inclusion explanation, and
 verified/estimated/unknown fact labels.
 
 The list is empty until a moderator adds and approves a real source-backed lead.

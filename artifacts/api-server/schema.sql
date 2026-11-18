@@ -159,13 +159,22 @@ CREATE TABLE IF NOT EXISTS gosie_week_ahead_discoveries (
   withdrawn_by TEXT REFERENCES gosie_users(id) ON DELETE SET NULL,
   withdrawn_at TIMESTAMPTZ,
   CHECK (jsonb_typeof(payload) = 'object'),
-  CHECK ((status = 'approved' AND approved_by IS NOT NULL AND approved_at IS NOT NULL)
+  CHECK ((status = 'approved' AND approved_at IS NOT NULL)
       OR (status <> 'approved' AND approved_by IS NULL AND approved_at IS NULL)),
-  CHECK ((status = 'withdrawn' AND withdrawn_by IS NOT NULL AND withdrawn_at IS NOT NULL)
+  CHECK ((status = 'withdrawn' AND withdrawn_at IS NOT NULL)
       OR (status <> 'withdrawn' AND withdrawn_by IS NULL AND withdrawn_at IS NULL))
 );
 CREATE INDEX IF NOT EXISTS gosie_week_ahead_discoveries_public_idx
   ON gosie_week_ahead_discoveries(status, updated_at DESC);
+-- Preserve review decisions without retaining an erased reviewer's account ID.
+ALTER TABLE gosie_week_ahead_discoveries DROP CONSTRAINT IF EXISTS gosie_week_ahead_discoveries_check;
+ALTER TABLE gosie_week_ahead_discoveries ADD CONSTRAINT gosie_week_ahead_discoveries_check
+  CHECK ((status = 'approved' AND approved_at IS NOT NULL)
+      OR (status <> 'approved' AND approved_by IS NULL AND approved_at IS NULL));
+ALTER TABLE gosie_week_ahead_discoveries DROP CONSTRAINT IF EXISTS gosie_week_ahead_discoveries_check1;
+ALTER TABLE gosie_week_ahead_discoveries ADD CONSTRAINT gosie_week_ahead_discoveries_check1
+  CHECK ((status = 'withdrawn' AND withdrawn_at IS NOT NULL)
+      OR (status <> 'withdrawn' AND withdrawn_by IS NULL AND withdrawn_at IS NULL));
 CREATE TABLE IF NOT EXISTS gosie_week_ahead_discovery_history (
   id BIGSERIAL PRIMARY KEY,
   discovery_id TEXT NOT NULL REFERENCES gosie_week_ahead_discoveries(id) ON DELETE CASCADE,

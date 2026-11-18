@@ -202,7 +202,6 @@ export default function ReviewedDiscoveriesManager({ open, onPublicChanged }: { 
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         body: JSON.stringify(body),
       });
-      const result = await readJson(response);
       if (!response.ok) throw new Error(response.status === 409
         ? 'This entry changed since you opened it. Refresh the list before editing again.'
         : 'This entry could not be saved. Check its source and evidence.');
@@ -244,7 +243,7 @@ export default function ReviewedDiscoveriesManager({ open, onPublicChanged }: { 
   }
 
   if (!open) return null;
-  const loginUrl = `/login?returnTo=${encodeURIComponent('/gosie-week-ahead/outings')}`;
+  const loginUrl = '/login';
   return <section className="review-manager" aria-labelledby="review-manager-heading">
     <div className="review-manager-heading">
       <div><span className="section-kicker">Private moderator workspace</span><h3 id="review-manager-heading">Review source-backed leads</h3></div>
@@ -253,16 +252,17 @@ export default function ReviewedDiscoveriesManager({ open, onPublicChanged }: { 
     <p className="review-manager-disclosure">Drafts and withdrawn entries are private. Approval makes an entry public; edits to an approved entry hide it until a second moderator approves the update. Source evidence and retrieval time stay attached. No provider or scraper is called.</p>
     {notice && <p className="review-manager-notice" role="status">{notice}</p>}
     {access === 'loading' && <p role="status">Checking moderator access…</p>}
-    {access === 'signed-out' && <div className="review-manager-access"><p>Sign in to check whether your account has moderator access. The private list was not loaded.</p><a href={loginUrl}>Sign in to Gosie</a></div>}
+    {access === 'signed-out' && <div className="review-manager-access"><p>Sign in, then return to Weekend Ahead and open these tools to check moderator access. The private list was not loaded.</p><a href={loginUrl}>Sign in to Gosie</a></div>}
     {access === 'forbidden' && <p className="review-manager-access" role="status">This workspace is limited to authorized Gosie moderators. No private entries were returned.</p>}
     {access === 'unavailable' && <div className="review-manager-access" role="alert"><AlertTriangle size={17} />{error}<button type="button" onClick={() => void load()}><RotateCw size={15} /> Retry</button></div>}
     {access === 'ready' && <>
+      {error && !formTarget && <p className="review-manager-error" role="alert">{error}</p>}
       <div className="review-manager-tools">
         <p role="status">{entries.length} private {entries.length === 1 ? 'entry' : 'entries'} · New records start as drafts and require approval by a different moderator.</p>
         <button type="button" className="review-manager-primary" onClick={() => setFormTarget('new')}><CirclePlus size={16} />Add source lead</button>
         <button type="button" className="review-manager-secondary" onClick={() => void load()}><RotateCw size={15} />Refresh list</button>
       </div>
-      {truncated && <p className="review-manager-notice">Only the first 100 entries are shown. More records are available; refine the list before reviewing.</p>}
+      {truncated && <p className="review-manager-notice">Only the first 100 entries are shown. Additional records cannot be reviewed in this workspace yet.</p>}
       {formTarget && <EntryForm key={formTarget === 'new' ? 'new' : `${formTarget.id}-${formTarget.version}`}
         initial={formTarget === 'new' ? emptyForm : formFromEntry(formTarget)}
         saving={busyId === (formTarget === 'new' ? 'new' : formTarget.id)} error={error}
@@ -272,6 +272,12 @@ export default function ReviewedDiscoveriesManager({ open, onPublicChanged }: { 
         {entries.map((entry) => <article className="review-manager-entry" key={entry.id}>
           <div className="review-manager-entry-head"><div><span className={`review-manager-status is-${entry.status}`}>{entry.status}</span><h4>{entry.title}</h4></div><span>Version {entry.version}</span></div>
           <p><strong>{entry.venue}</strong> · {entry.region}</p>
+          <p>When: {entry.startsAt ? new Date(entry.startsAt).toLocaleString() : 'Not confirmed'}</p>
+          <ul className="reviewed-discovery-facts">{fields.map(({ key }) => {
+            const fact = entry[key];
+            return <li key={key}><strong>{fact.label}:</strong> {fact.value || 'Not confirmed'} ({fact.status})</li>;
+          })}</ul>
+          <p>{entry.whyIncluded}</p>
           <p>{entry.publisher} · <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Open cited source</a></p>
           <p>Checked {new Date(entry.retrievedAt).toLocaleString()} · Updated {new Date(entry.updatedAt).toLocaleString()}</p>
           <div className="review-manager-entry-actions">
@@ -279,7 +285,7 @@ export default function ReviewedDiscoveriesManager({ open, onPublicChanged }: { 
               onClick={() => { setError(''); setFormTarget(entry); }}>Edit as draft</button>
             {entry.status === 'draft' && <button type="button" className="review-manager-primary" disabled={!!busyId || !entry.canApprove}
               title={!entry.canApprove ? 'A different moderator must approve this draft.' : undefined}
-              onClick={() => void transition(entry, 'approve')}><Check size={15} />Approve and publish</button>}
+              onClick={() => void transition(entry, 'approve')}><Check size={15} />Approve public listing</button>}
             {entry.status !== 'withdrawn' && <button type="button" className="review-manager-withdraw" disabled={!!busyId}
               onClick={() => void transition(entry, 'withdraw')}>Withdraw</button>}
             {!entry.canApprove && entry.status === 'draft' && <span className="review-manager-help">Needs a different moderator.</span>}

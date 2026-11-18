@@ -58,12 +58,12 @@ function withApproval(payload) {
 }
 
 function publicEntry(row) {
-  return withApproval(row.payload);
+  return { id: row.id, ...withApproval(row.payload) };
 }
 
 function privateEntry(row, userId) {
   return {
-    ...withApproval(row.payload),
+    id: row.id, ...withApproval(row.payload),
     status: row.status,
     version: row.version,
     canApprove: row.status === 'draft' && row.updated_by !== userId,
@@ -97,7 +97,7 @@ async function transaction(work) {
   try {
     await client.query('BEGIN');
     const result = await work(client);
-    if (result.status >= 400) await client.query('ROLLBACK');
+    if (result[0] >= 400) await client.query('ROLLBACK');
     else await client.query('COMMIT');
     return result;
   } catch (error) {
@@ -159,6 +159,7 @@ async function changeStatus(userId, id, body, action) {
     if (action === 'approve') {
       if (row.status !== 'draft') return [409, { error: 'only_drafts_can_be_approved' }];
       if (row.updated_by === userId) return [403, { error: 'independent_moderator_required' }];
+      if (!validateRecord(row.payload)) return [409, { error: 'invalid_discovery' }];
       const result = await client.query(`UPDATE gosie_week_ahead_discoveries
         SET status='approved',version=$1,updated_by=$2,approved_by=$2,approved_at=NOW(),updated_at=NOW()
         WHERE id=$3 RETURNING *`, [nextVersion, userId, id]);
@@ -177,7 +178,7 @@ async function changeStatus(userId, id, body, action) {
 
 async function handleWeekAheadDiscoveries({ req, res, path, body, session, send }) {
   if (path === base && req.method === 'GET') {
-    const result = await pool.query(`SELECT payload FROM gosie_week_ahead_discoveries
+    const result = await pool.query(`SELECT id,payload FROM gosie_week_ahead_discoveries
       WHERE status='approved' ORDER BY (payload->>'startsAt') NULLS LAST, updated_at DESC LIMIT 101`);
     return reply(send, res, 200, {
       schemaVersion: 1,
