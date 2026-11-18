@@ -5,6 +5,7 @@ on:
     paths:
       - "artifacts/gosie/**"
       - "artifacts/gosie-week-ahead/**"
+      - "design-system/gosie-week-ahead/**"
       - "artifacts/api-server/**"
       - "artifacts/gosie-mobile/**"
       - "lib/api-client-react/**"
