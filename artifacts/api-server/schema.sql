@@ -142,3 +142,10 @@ CREATE TABLE IF NOT EXISTS gosie_community_comments (
 CREATE INDEX IF NOT EXISTS gosie_community_items_feed_idx ON gosie_community_items(status, ends_at);
 CREATE INDEX IF NOT EXISTS gosie_community_items_owner_idx ON gosie_community_items(user_id);
 CREATE INDEX IF NOT EXISTS gosie_community_comments_item_idx ON gosie_community_comments(item_id, status);
+
+-- Nullable for pre-existing decisions; never fabricate a historical reason.
+-- Only private contributor/moderator responses may expose these fields.
+ALTER TABLE gosie_community_items ADD COLUMN IF NOT EXISTS decision_reason TEXT
+  CHECK (decision_reason IS NULL OR length(trim(decision_reason)) BETWEEN 10 AND 1000);
+ALTER TABLE gosie_community_comments ADD COLUMN IF NOT EXISTS decision_reason TEXT
+  CHECK (decision_reason IS NULL OR length(trim(decision_reason)) BETWEEN 10 AND 1000);

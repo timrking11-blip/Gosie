@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommunityCard, communityStyles as s } from '@/components/CommunityFeed';
-import { mobileCommunityRequest as request, useCommunityItems } from '@/hooks/useCommunity';
+import { CommunityCard, communityStyles as s } from '../../components/CommunityFeed';
+import { mobileCommunityRequest as request, useCommunityItems } from '../../hooks/useCommunity';
 import type { CommunityDraft, CommunityMine, CommunityItem, CommunityComment } from '../../../../lib/community/api';
 import { hasOrganizationRole } from '../../../../lib/community/api';
+import { REASON_MAX, decisionNote, reasonError, reasonHelp, reviewChecklist } from '../../../../lib/community/moderation';
 
 const emptyDraft: CommunityDraft = { kind: 'gem', title: '', description: '', location: '', attribution: '' };
 export default function CommunitiesScreen() {
@@ -18,6 +19,7 @@ export default function CommunitiesScreen() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [privateError, setPrivateError] = useState('');
+  const [reasons, setReasons] = useState<Record<string, string>>({});
   async function loadPrivate() {
     setPrivateError('');
     try {
@@ -40,9 +42,27 @@ export default function CommunitiesScreen() {
     catch (e) { setMessage(e instanceof Error ? e.message.replace(/_/g, ' ') : 'This change could not be saved.'); }
     finally { setBusy(false); }
   }
-  const button = (label: string, action: () => void) => <TouchableOpacity accessibilityRole="button" disabled={busy} onPress={action} style={s.button}><Text style={s.buttonText}>{label}</Text></TouchableOpacity>;
+  const button = (label: string, action: () => void, disabled = false) => <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: busy || disabled }} disabled={busy || disabled} onPress={action} style={[s.button, (busy || disabled) && { opacity: 0.55 }]}><Text style={s.buttonText}>{label}</Text></TouchableOpacity>;
   const field = (label: string, value: string, onChangeText: (value: string) => void, multiline = false) =>
     <View style={{ gap: 5 }}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={s.input} value={value} onChangeText={onChangeText} multiline={multiline} autoCapitalize="none" /></View>;
+  const privateDecision = (record: { status: CommunityItem['status']; decisionReason?: string | null }) => {
+    const note = decisionNote(record);
+    return note ? <View style={s.comment}><Text style={s.label}>Moderator reason (private to you and moderators)</Text><Text style={s.body}>{note}</Text></View> : null;
+  };
+  const decide = (kind: 'items' | 'comments', record: { id: string; canReview?: boolean }, noun: string) => {
+    if (record.canReview === false) return <Text style={s.label}>You cannot review your own contribution. Another moderator will decide.</Text>;
+    const key = `${kind}:${record.id}`;
+    const reason = reasons[key] || '';
+    const invalid = reasonError(reason);
+    const label = `Reason for decision on this ${noun} (required)`;
+    return <View style={{ gap: 8 }}>
+      <Text style={s.label}>{label}</Text>
+      <TextInput accessibilityLabel={label} accessibilityHint={reasonHelp} editable={!busy} maxLength={REASON_MAX} multiline style={s.input} value={reason} onChangeText={(value) => setReasons((current) => ({ ...current, [key]: value }))} />
+      <Text style={s.meta}>{reasonHelp} {reason.trim().length}/{REASON_MAX}</Text>
+      {reason !== '' && invalid !== '' && <Text accessibilityRole="alert" style={s.meta}>{invalid}</Text>}
+      <View style={s.row}>{(['approved', 'rejected'] as const).map((decision) => <React.Fragment key={decision}>{button(`${decision === 'approved' ? 'Approve' : 'Reject'} ${noun}`, () => void act(async () => { await mutate(`/community/moderation/${kind}/${record.id}`, { decision, decisionReason: reason.trim() }); setReasons((current) => ({ ...current, [key]: '' })); }, `${noun === 'find' ? 'Find' : 'Comment'} ${decision}.`), invalid !== '')}</React.Fragment>)}</View>
+    </View>;
+  };
   return <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f0e5' }} edges={['top']}><ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
     <Text accessibilityRole="header" style={s.title}>Gosie Communities</Text>
     <Text style={s.body}>For people. Made better by local knowledge—not an advertising directory. Invited people, restaurants, venues, municipalities, and nonprofits can share useful local finds. Every contribution is moderated. Community content is separate from Gosie's fictional examples. Confirm details with the source.</Text>
@@ -76,12 +96,13 @@ export default function CommunitiesScreen() {
       </View>}
       <Text style={s.title}>Your submissions</Text>
       {mine.items.length === 0 && mine.comments.length === 0 && <Text style={s.body}>Nothing submitted yet.</Text>}
-      {mine.items.map((item) => <CommunityCard key={item.id} item={item} />)}
-      {mine.comments.map((comment) => <View key={comment.id} style={s.card}><Text style={s.label}>{comment.status} · your organization note</Text><Text style={s.body}>{comment.text}</Text></View>)}
+      {mine.items.map((item) => <CommunityCard key={item.id} item={item}>{privateDecision(item)}</CommunityCard>)}
+      {mine.comments.map((comment) => <View key={comment.id} style={s.card}><Text style={s.label}>{comment.status} · your organization note</Text><Text style={s.body}>{comment.text}</Text>{privateDecision(comment)}</View>)}
       {queue && <View style={{ gap: 14 }}><Text style={s.title}>Moderator review</Text><Text style={s.body}>Only pending content is shown. You cannot approve your own contributions.</Text>
+        <View style={s.card}><Text style={s.label}>Before you decide, check for people first</Text>{reviewChecklist.map((line) => <Text key={line} style={s.body}>- {line}</Text>)}</View>
         {queue.items.length === 0 && queue.comments.length === 0 && <Text style={s.body}>The review queue is empty.</Text>}
-        {queue.items.map((item) => <CommunityCard item={item} key={item.id}><View style={s.row}>{(['approved', 'rejected'] as const).map((decision) => <React.Fragment key={decision}>{button(decision === 'approved' ? 'Approve find' : 'Reject find', () => void act(() => mutate(`/community/moderation/items/${item.id}`, { decision }), `Find ${decision}.`))}</React.Fragment>)}</View></CommunityCard>)}
-        {queue.comments.map((comment) => <View key={comment.id} style={s.card}><Text style={s.label}>{comment.attribution} · owner comment for {comment.itemId}</Text><Text style={s.body}>{comment.text}</Text><View style={s.row}>{(['approved', 'rejected'] as const).map((decision) => <React.Fragment key={decision}>{button(decision === 'approved' ? 'Approve comment' : 'Reject comment', () => void act(() => mutate(`/community/moderation/comments/${comment.id}`, { decision }), `Comment ${decision}.`))}</React.Fragment>)}</View></View>)}
+        {queue.items.map((item) => <CommunityCard item={item} key={item.id}>{decide('items', item, 'find')}</CommunityCard>)}
+        {queue.comments.map((comment) => <View key={comment.id} style={s.card}><Text style={s.label}>{comment.attribution} · organization note for {comment.itemId}</Text><Text style={s.body}>{comment.text}</Text>{decide('comments', comment, 'comment')}</View>)}
       </View>}
       {button('Sign out of Communities', () => void act(() => mutate('/auth/logout', {}), 'Signed out.'))}
     </>}

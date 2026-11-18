@@ -50,7 +50,18 @@
 .gc-btn-ghost { background: transparent; color: var(--gc-forest); border-color: var(--gc-line); }
 .gc-btn-danger { background: transparent; color: var(--gc-red); border-color: #e3b9ae; }
 .gc-root :focus-visible { outline: 3px solid #946640; outline-offset: 3px; }
-.gc-decide { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.gc-decide { display: grid; gap: 6px; width: 100%; margin-top: 8px; min-width: 0; }
+.gc-decide label { color: var(--gc-muted); font-size: 12px; font-weight: 750; }
+.gc-decide textarea { width: 100%; min-height: 72px; padding: 10px 12px; border: 1px solid var(--gc-line); border-radius: 10px; background: var(--gc-paper); color: var(--gc-ink); font: 14px inherit; font-family: inherit; resize: vertical; }
+.gc-decide-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.gc-decision { flex: 1 1 100%; min-width: 0; margin-top: 4px; padding: 8px 10px; border-radius: 10px; background: var(--gc-sage-soft); overflow-wrap: anywhere; }
+.gc-decision p { margin: 0; font-size: 13px; line-height: 1.55; }
+.gc-root .gc-decision-label { font-size: 12px; font-weight: 750; color: var(--gc-forest); }
+.gc-decision-label span { font-weight: 500; color: var(--gc-muted); }
+.gc-self { flex: 1 1 100%; font-weight: 700; }
+.gc-checklist { padding: 12px 14px; border: 1px solid var(--gc-line); border-radius: 14px; background: var(--gc-card); }
+.gc-checklist h4 { font-size: 16px; }
+.gc-checklist ul { margin: 6px 0 0; padding-left: 18px; color: var(--gc-muted); font-size: 13px; line-height: 1.6; }
 .gc-owner { margin-top: 2px; }
 .gc-form { display: grid; gap: 12px; max-width: 720px; padding: 18px; border: 1px solid var(--gc-line); border-radius: 18px; background: var(--gc-card); }
 .gc-form-tight { padding: 12px; border-radius: 12px; }

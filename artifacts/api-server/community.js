@@ -4,6 +4,9 @@ const { handleOrganizationAccess } = require('./organization-access');
 const organizationRoles = new Set(['restaurant-owner', 'venue', 'municipality', 'nonprofit']);
 
 const iso = (value) => value ? new Date(value).toISOString() : null;
+// Opt in only for the contributor's own records or the moderator queue.
+// Public serializers deliberately never include review reasons or identities.
+const privateReview = (row) => ({ decisionReason: row.decision_reason || null });
 function mapComment(row) {
   return { id: row.id, itemId: row.item_id, text: row.body, attribution: row.attribution,
     status: row.status, createdAt: iso(row.created_at), reviewedAt: iso(row.reviewed_at) };
@@ -78,7 +81,9 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
       pool.query('SELECT * FROM gosie_community_items WHERE user_id=$1 ORDER BY created_at DESC', [userId]),
       pool.query('SELECT * FROM gosie_community_comments WHERE user_id=$1 ORDER BY created_at DESC', [userId]),
     ]);
-    return reply(200, { roles, isOperator: await isCommunityOperator(userId), items: items.rows.map((row) => mapItem(row)), comments: comments.rows.map(mapComment) });
+    return reply(200, { roles, isOperator: await isCommunityOperator(userId),
+      items: items.rows.map((row) => ({ ...mapItem(row), ...privateReview(row) })),
+      comments: comments.rows.map((row) => ({ ...mapComment(row), ...privateReview(row) })) });
   }
   if (req.method === 'POST' && path === '/community/items') {
     const organization = grants.find((grant) => organizationRoles.has(grant.role));
@@ -110,12 +115,18 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
       pool.query("SELECT * FROM gosie_community_items WHERE status='pending' ORDER BY created_at"),
       pool.query("SELECT * FROM gosie_community_comments WHERE status='pending' ORDER BY created_at"),
     ]);
-    return reply(200, { items: items.rows.map((row) => mapItem(row)), comments: comments.rows.map(mapComment) });
+    return reply(200, {
+      items: items.rows.map((row) => ({ ...mapItem(row), ...privateReview(row), canReview: row.user_id !== userId })),
+      comments: comments.rows.map((row) => ({ ...mapComment(row), ...privateReview(row), canReview: row.user_id !== userId })),
+    });
   }
   const moderationMatch = path.match(/^\/community\/moderation\/(items|comments)\/([^/]+)$/);
   if (req.method === 'POST' && moderationMatch) {
     if (!roles.includes('moderator')) return reply(403, { error: 'moderator_permission_required' });
-    if (Object.keys(body).some((key) => key !== 'decision') || !['approved', 'rejected'].includes(body.decision)) return reply(400, { error: 'invalid_decision' });
+    if (Object.keys(body).some((key) => !['decision', 'decisionReason'].includes(key)) || !['approved', 'rejected'].includes(body.decision)) return reply(400, { error: 'invalid_decision' });
+    if (typeof body.decisionReason !== 'string' || body.decisionReason.length > 1000 || body.decisionReason.trim().length < 10) {
+      return reply(400, { error: 'decision_reason_required_10_to_1000_characters' });
+    }
     // Table names come only from the fixed regex above, never a user SQL fragment.
     const table = moderationMatch[1] === 'items' ? 'gosie_community_items' : 'gosie_community_comments';
     const client = await pool.connect();
@@ -134,7 +145,8 @@ async function handleCommunity({ req, res, path, url, body, session, send }) {
           if (!parent.rowCount) { await client.query('ROLLBACK'); return reply(409, { error: 'event_no_longer_current' }); }
         }
       }
-      await client.query(`UPDATE ${table} SET status=$1,reviewed_by=$2,reviewed_at=NOW() WHERE id=$3`, [body.decision, userId, row.id]);
+      await client.query(`UPDATE ${table} SET status=$1,reviewed_by=$2,reviewed_at=NOW(),decision_reason=$4 WHERE id=$3`,
+        [body.decision, userId, row.id, body.decisionReason.trim()]);
       await client.query('COMMIT');
       return reply(200, { status: body.decision });
     } catch (error) { await client.query('ROLLBACK'); throw error; }

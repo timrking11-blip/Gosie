@@ -7,6 +7,7 @@ import type { CommunityComment, CommunityDraft, CommunityItem, CommunityMine } f
 import "./community.css";
 import { TimeSelect, localEventIso } from "./TimeSelect";
 import { OrganizationAccessPanel } from "./OrganizationAccessPanel";
+import { REASON_MAX, decisionNote, reasonError, reasonHelp, reviewChecklist } from "./moderation";
 
 type Session = { authenticated: boolean; user?: { email?: string } | null; csrfToken?: string };
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
@@ -169,23 +170,47 @@ function OwnerComment({ item, apiBase, onDone }: { item: CommunityItem; apiBase:
   </div>;
 }
 
-function Decide({ kind, id, apiBase, onDone }: { kind: "items" | "comments"; id: string; apiBase: string; onDone: (msg: string) => void }) {
+function PrivateDecision({ record }: { record: { status: CommunityItem["status"]; decisionReason?: string | null } }) {
+  const note = decisionNote(record);
+  if (!note) return null;
+  return <div className="gc-decision"><p className="gc-decision-label">Moderator reason <span>(private to you and moderators)</span></p><p className={record.decisionReason?.trim() ? "" : "gc-fine"}>{note}</p></div>;
+}
+
+function Checklist() {
+  return <div className="gc-checklist"><h4>Before you decide, check for people first</h4><ul>{reviewChecklist.map((c) => <li key={c}>{c}</li>)}</ul></div>;
+}
+
+function Decide({ kind, id, canReview, apiBase, onDone }: { kind: "items" | "comments"; id: string; canReview?: boolean; apiBase: string; onDone: (msg: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [reason, setReason] = useState("");
+  const [touched, setTouched] = useState(false);
+  if (canReview === false) return <p className="gc-fine gc-self">You cannot review your own contribution. Another moderator will decide.</p>;
+  const invalid = reasonError(reason);
+  const fieldId = `gc-reason-${kind}-${id}`;
   async function decide(decision: "approved" | "rejected") {
+    setTouched(true);
+    if (invalid) { setError(invalid); return; }
     setBusy(true); setError("");
-    try { await write(`/community/moderation/${kind}/${encodeURIComponent(id)}`, { decision }, apiBase); onDone(decision === "approved" ? "Approved and now public." : "Marked as not approved."); }
+    try { await write(`/community/moderation/${kind}/${encodeURIComponent(id)}`, { decision, decisionReason: reason.trim() }, apiBase); onDone(decision === "approved" ? "Approved and now public." : "Marked as not approved."); }
     catch (err) { setError(errText(err, "That decision couldn't be saved.")); setBusy(false); }
   }
   return <div className="gc-decide">
-    <button type="button" className="gc-btn" disabled={busy} onClick={() => decide("approved")}>Approve</button>
-    <button type="button" className="gc-btn gc-btn-danger" disabled={busy} onClick={() => decide("rejected")}>Reject</button>
+    <label htmlFor={fieldId}>Reason for your decision (required)</label>
+    <textarea id={fieldId} rows={3} required minLength={10} maxLength={REASON_MAX} value={reason} disabled={busy} aria-describedby={`${fieldId}-help`} aria-invalid={touched && !!invalid}
+      onChange={(e) => { setReason(e.target.value); if (error) setError(""); }} onBlur={() => setTouched(true)} />
+    <p id={`${fieldId}-help`} className="gc-fine">{reasonHelp} {reason.trim().length}/{REASON_MAX}</p>
     {error && <p className="gc-inline-error" role="alert">{error}</p>}
+    {!error && touched && invalid && <p className="gc-inline-error" role="alert">{invalid}</p>}
+    <div className="gc-decide-actions">
+      <button type="button" className="gc-btn" disabled={busy || !!invalid} onClick={() => decide("approved")}>Approve</button>
+      <button type="button" className="gc-btn gc-btn-danger" disabled={busy || !!invalid} onClick={() => decide("rejected")}>Reject</button>
+    </div>
   </div>;
 }
 
-function CommentRow({ c, footer }: { c: CommunityComment; footer?: ReactNode }) {
-  return <li className="gc-mine-comment"><div><p>{c.text}</p><span>{c.attribution} · {fmtDate(c.createdAt, false)}</span></div><StatusChip status={c.status} />{footer}</li>;
+function CommentRow({ c, footer, showDecision }: { c: CommunityComment; footer?: ReactNode; showDecision?: boolean }) {
+  return <li className="gc-mine-comment"><div><p>{c.text}</p><span>{c.attribution} · {fmtDate(c.createdAt, false)}</span></div><StatusChip status={c.status} />{showDecision && <PrivateDecision record={c} />}{footer}</li>;
 }
 
 export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { apiBase?: string; loginHref?: string }) {
@@ -231,25 +256,26 @@ export function CommunityPanel({ apiBase = "/api", loginHref = "/login" }: { api
       <>
         {mine.status === "ready" && mine.data.isOperator === true && <OrganizationAccessPanel key={version} apiBase={apiBase} onDone={done} />}
         <section className="gc-section" aria-labelledby="gc-mine-h">
-          <div className="gc-section-head"><h3 id="gc-mine-h">Your suggestions</h3><span className="gc-private">Pending and rejected: you and moderators only</span></div>
+          <div className="gc-section-head"><h3 id="gc-mine-h">Your suggestions</h3><span className="gc-private">Pending, rejected and decision reasons: you and moderators only</span></div>
           {mine.status === "loading" ? <Skeleton label="Loading your suggestions" /> :
             mine.status === "error" ? <ErrorBox what="Your suggestions" message={mine.message} onRetry={retryMine} /> :
             mine.data.items.length + mine.data.comments.length === 0 ? <Empty title="You haven't shared anything yet.">{canSubmit ? "Use the form below — you'll see each suggestion's review status here." : "Your account isn't set up to share yet. You can still browse everything approved above."}</Empty> :
             <>
-              {mine.data.items.length > 0 && <div className="gc-grid">{mine.data.items.map((item) => <ItemCard key={item.id} item={item} showStatus />)}</div>}
-              {mine.data.comments.length > 0 && <><h4 className="gc-subhead">Your organization notes</h4><ul className="gc-mine-comments">{mine.data.comments.map((c) => <CommentRow key={c.id} c={c} />)}</ul></>}
+              {mine.data.items.length > 0 && <div className="gc-grid">{mine.data.items.map((item) => <ItemCard key={item.id} item={item} showStatus footer={<PrivateDecision record={item} />} />)}</div>}
+              {mine.data.comments.length > 0 && <><h4 className="gc-subhead">Your organization notes</h4><ul className="gc-mine-comments">{mine.data.comments.map((c) => <CommentRow key={c.id} c={c} showDecision />)}</ul></>}
             </>}
         </section>
         {canSubmit && <section className="gc-section gc-submit" aria-labelledby="gc-submit-h"><h3 id="gc-submit-h">Suggest an event or gem</h3><SubmitForm apiBase={apiBase} onDone={done} /></section>}
         {isMod && <section className="gc-section gc-mod" aria-labelledby="gc-mod-h">
           <div className="gc-section-head"><h3 id="gc-mod-h">Waiting for review</h3><span className="gc-private">Moderators only</span></div>
           <p className="gc-fine">Your own submissions are reviewed by someone else.</p>
+          <Checklist />
           {queue.status === "loading" ? <Skeleton label="Loading review queue" /> :
             queue.status === "error" ? <ErrorBox what="The review queue" message={queue.message} onRetry={retryQueue} /> :
             queue.data.items.length + queue.data.comments.length === 0 ? <Empty title="All caught up.">No suggestions or notes are waiting.</Empty> :
             <>
-              {queue.data.items.length > 0 && <div className="gc-grid">{queue.data.items.map((item) => <ItemCard key={item.id} item={item} showStatus footer={<Decide kind="items" id={item.id} apiBase={apiBase} onDone={done} />} />)}</div>}
-              {queue.data.comments.length > 0 && <><h4 className="gc-subhead">Restaurant notes</h4><ul className="gc-mine-comments">{queue.data.comments.map((c) => <CommentRow key={c.id} c={{ ...c, text: itemTitle[c.itemId] ? `On “${itemTitle[c.itemId]}”: ${c.text}` : c.text }} footer={<Decide kind="comments" id={c.id} apiBase={apiBase} onDone={done} />} />)}</ul></>}
+              {queue.data.items.length > 0 && <div className="gc-grid">{queue.data.items.map((item) => <ItemCard key={item.id} item={item} showStatus footer={<Decide kind="items" id={item.id} canReview={item.canReview} apiBase={apiBase} onDone={done} />} />)}</div>}
+              {queue.data.comments.length > 0 && <><h4 className="gc-subhead">Organization notes</h4><ul className="gc-mine-comments">{queue.data.comments.map((c) => <CommentRow key={c.id} c={{ ...c, text: itemTitle[c.itemId] ? `On “${itemTitle[c.itemId]}”: ${c.text}` : c.text }} footer={<Decide kind="comments" id={c.id} canReview={c.canReview} apiBase={apiBase} onDone={done} />} />)}</ul></>}
             </>}
         </section>}
       </>}

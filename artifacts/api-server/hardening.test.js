@@ -694,7 +694,11 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
   };
   let item, gem, comment, rejected;
   const moderate = (type, id, decision = 'approved', user = moderator) =>
-    post(`/community/moderation/${type}/${id}`, { decision }, user);
+    post(`/community/moderation/${type}/${id}`, {
+      decision, decisionReason: decision === 'approved'
+        ? 'Useful practical local information, with contributor-supplied details.'
+        : 'Please add practical local details rather than advertising-only claims.',
+    }, user);
   await t.test('unassigned users cannot submit, self-grant, or enter moderator queue', async () => {
     assert.equal((await post('/community/items', draft, reader)).status, 403);
     assert.equal((await post('/community/roles', { role: 'moderator' }, reader)).status, 404);
@@ -718,9 +722,31 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.equal((await get('/community/moderation', moderator)).json.items.some((row) => row.id === item.id), true);
     assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'No private comments allowed' }, owner)).status, 404);
   });
+  await t.test('decisions require a bounded reason and cannot bypass moderator or CSRF checks', async () => {
+    const route = `/community/moderation/items/${item.id}`;
+    for (const decision of ['approved', 'rejected']) {
+      for (const decisionReason of [undefined, null, 123, '', '         ', 'too short', 'x'.repeat(1001)]) {
+        const response = await post(route, { decision, decisionReason }, moderator);
+        assert.equal(response.status, 400);
+        assert.equal(response.json.error, 'decision_reason_required_10_to_1000_characters');
+      }
+    }
+    const body = { decision: 'approved', decisionReason: 'Useful practical local details.' };
+    assert.equal((await post(route, { ...body, reviewed_by: reader.id }, moderator)).status, 400);
+    assert.equal((await post(route, body, reader)).status, 403);
+    assert.equal((await post(route, body, { ...moderator, csrf: 'wrong' })).status, 403);
+    assert.equal((await call(primary.port, 'POST', route, { body })).status, 401);
+    assert.equal((await get('/community/mine', contributor)).json.items.find((row) => row.id === item.id).status, 'pending');
+  });
   await t.test('moderators approve others, not themselves; stale transitions fail', async () => {
     await testPool.query("INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,'moderator')", [contributor.id]);
-    assert.equal((await moderate('items', item.id, 'approved', contributor)).status, 403);
+    const selfQueueItem = (await get('/community/moderation', contributor)).json.items.find((row) => row.id === item.id);
+    assert.equal(selfQueueItem.canReview, false);
+    const otherQueueItem = (await get('/community/moderation', moderator)).json.items.find((row) => row.id === item.id);
+    assert.equal(otherQueueItem.canReview, true);
+    for (const decision of ['approved', 'rejected']) {
+      assert.equal((await moderate('items', item.id, decision, contributor)).status, 403);
+    }
     assert.equal((await moderate('items', item.id)).status, 200);
     assert.equal((await moderate('items', item.id, 'rejected')).status, 409);
     const publicItem = (await get('/community/items')).json.items.find((row) => row.id === item.id);
@@ -729,6 +755,12 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.equal('user_id' in publicItem, false);
     assert.equal(publicItem.expired, false);
     assert.match(publicItem.why, /contributor-supplied/);
+    assert.equal(Object.hasOwn(publicItem, 'decisionReason'), false);
+    assert.equal(Object.hasOwn(publicItem, 'decision_reason'), false);
+    assert.equal(Object.hasOwn(publicItem, 'canReview'), false);
+    const privateItem = (await get('/community/mine', contributor)).json.items.find((row) => row.id === item.id);
+    assert.match(privateItem.decisionReason, /Useful practical local information/);
+    assert.equal(Object.hasOwn(privateItem, 'reviewed_by'), false);
   });
   await t.test('only designated owners comment and comments stay private until separately approved', async () => {
     assert.equal((await post(`/community/items/${item.id}/comments`, { text: 'Not an owner' }, reader)).status, 403);
@@ -740,8 +772,11 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.equal((await get('/community/items')).json.items.find((row) => row.id === item.id).comments.length, 0);
     assert.equal((await get('/community/mine', reader)).json.comments.some((row) => row.id === comment.id), false);
     assert.equal((await get('/community/mine', owner)).json.comments.some((row) => row.id === comment.id), true);
+    const invalid = await post(`/community/moderation/comments/${comment.id}`, { decision: 'rejected', decisionReason: 'short' }, moderator);
+    assert.equal(invalid.status, 400);
     assert.equal((await moderate('comments', comment.id)).status, 200);
     assert.equal((await get('/community/items')).json.items.find((row) => row.id === item.id).comments[0].id, comment.id);
+    assert.match((await get('/community/mine', owner)).json.comments.find((row) => row.id === comment.id).decisionReason, /Useful practical/);
   });
   await t.test('evergreen gems have no schedule and reject dates, invalid events and unsafe links', async () => {
     for (const bad of [
@@ -789,8 +824,24 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
       await testPool.query("INSERT INTO gosie_community_roles (user_id,role) VALUES ($1,'moderator')", [organization.id]);
       assert.equal((await moderate('items', submitted.json.item.id, 'approved', organization)).status, 403);
       assert.equal((await moderate('comments', note.json.comment.id, 'approved', organization)).status, 403);
+      assert.equal((await moderate('comments', note.json.comment.id, 'rejected', organization)).status, 403);
       assert.equal((await moderate('items', submitted.json.item.id)).status, 200);
       assert.equal((await moderate('comments', note.json.comment.id)).status, 200);
+    }
+  });
+  await t.test('public and archived feeds omit private reasons on every item and nested comment, even for a moderator', async () => {
+    for (const actor of [undefined, reader, owner, contributor, moderator]) {
+      for (const route of ['/community/items', '/community/items?includeExpired=true']) {
+        const result = await get(route, actor);
+        assert.equal(result.status, 200);
+        const approved = result.json.items.find((row) => row.id === item.id);
+        assert.ok(approved.comments.length >= 4, 'exercise multiple nested comments, not only the first');
+        for (const row of result.json.items.flatMap((entry) => [entry, ...entry.comments])) {
+          for (const field of ['decisionReason', 'decision_reason', 'reviewed_by', 'canReview', 'user_id']) {
+            assert.equal(Object.hasOwn(row, field), false, `public response leaked ${field}`);
+          }
+        }
+      }
     }
   });
   await t.test('rejected submissions and comments remain private and never enter public reads', async () => {
@@ -802,7 +853,44 @@ test('Communities enforce grants, privacy, moderation, expiry, and owner attribu
     assert.equal(publicFeed.some((row) => row.id === rejected.id), false);
     assert.equal(publicFeed.find((row) => row.id === item.id).comments.some((row) => row.id === pendingComment.id), false);
     assert.equal((await get('/community/mine', contributor)).json.items.find((row) => row.id === rejected.id).status, 'rejected');
+    assert.match((await get('/community/mine', contributor)).json.items.find((row) => row.id === rejected.id).decisionReason, /rather than advertising/);
+    assert.match((await get('/community/mine', owner)).json.comments.find((row) => row.id === pendingComment.id).decisionReason, /rather than advertising/);
     assert.equal((await get('/community/mine', reader)).json.items.some((row) => row.id === rejected.id), false);
+    assert.equal((await get('/community/mine', reader)).json.comments.some((row) => row.id === pendingComment.id), false);
+  });
+  await t.test('trimmed reasons are stored atomically and a later stale decision cannot overwrite them', async () => {
+    const target = (await post('/community/items', { ...draft, kind: 'gem', startsAt: null, endsAt: null })).json.item;
+    const reason = 'Please include public opening hours or a source for your claims.';
+    const route = `/community/moderation/items/${target.id}`;
+    assert.equal((await post(route, { decision: 'rejected', decisionReason: `  ${reason}  ` }, moderator)).status, 200);
+    assert.equal((await moderate('items', target.id)).status, 409);
+    const own = (await get('/community/mine', contributor)).json.items.find((row) => row.id === target.id);
+    assert.equal(own.decisionReason, reason);
+    assert.equal(own.status, 'rejected');
+    assert.ok(own.reviewedAt);
+    const stored = (await testPool.query('SELECT status,decision_reason,reviewed_by FROM gosie_community_items WHERE id=$1', [target.id])).rows[0];
+    assert.equal(stored.decision_reason, reason);
+    assert.equal(stored.reviewed_by, moderator.id);
+  });
+  await t.test('legacy reviewed records have no invented reason', async () => {
+    const target = (await post('/community/items', { ...draft, kind: 'gem', startsAt: null, endsAt: null })).json.item;
+    await testPool.query("UPDATE gosie_community_items SET status='rejected',reviewed_at=NOW() WHERE id=$1", [target.id]);
+    const own = (await get('/community/mine', contributor)).json.items.find((row) => row.id === target.id);
+    assert.equal(own.decisionReason, null);
+  });
+  await t.test('competing moderators cannot overwrite the winning status or private reason', async () => {
+    const target = (await post('/community/items', { ...draft, kind: 'gem', startsAt: null, endsAt: null })).json.item;
+    const decisions = [
+      { decision: 'approved', decisionReason: 'Practical local details with a credible public source.' },
+      { decision: 'rejected', decisionReason: 'Please clarify the source before sharing this publicly.' },
+    ];
+    const results = await Promise.all(decisions.map((body) =>
+      post(`/community/moderation/items/${target.id}`, body, moderator)));
+    assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
+    const winner = decisions[results.findIndex((result) => result.status === 200)];
+    const own = (await get('/community/mine', contributor)).json.items.find((row) => row.id === target.id);
+    assert.equal(own.status, winner.decision);
+    assert.equal(own.decisionReason, winner.decisionReason);
   });
   await t.test('expired events are omitted by default, explicitly labeled in archive and cannot receive new notes', async () => {
     await testPool.query("UPDATE gosie_community_items SET starts_at=NOW()-INTERVAL '2 hours',ends_at=NOW()-INTERVAL '1 hour' WHERE id=$1", [item.id]);

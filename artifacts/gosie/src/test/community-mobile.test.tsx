@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, renderHook, waitFor, act } from "@testing-library/react";
 
-// Exercise the actual native hook in jsdom without parsing React Native's
-// platform renderer. Its data/API behavior is identical on the web target.
+// Test the real native data hook independently of the screen's request mocks.
 vi.mock("../../../gosie-mobile/node_modules/react-native", () => ({ Platform: { OS: "web" } }));
 import { useCommunityItems, mobileApiBase } from "../../../gosie-mobile/hooks/useCommunity";
 

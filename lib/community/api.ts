@@ -19,10 +19,15 @@ export type CommunityItem = {
   expired: boolean;
   why: string;
   comments: CommunityComment[];
+  /** Present only on private contributor / moderator responses. */
+  decisionReason?: string | null;
+  /** Present only in the moderator queue; enforced independently by the API. */
+  canReview?: boolean;
 };
 export type CommunityComment = {
   id: string; itemId: string; text: string; attribution: string;
   status: "pending" | "approved" | "rejected"; createdAt: string; reviewedAt: string | null;
+  decisionReason?: string | null; canReview?: boolean;
 };
 export type CommunityDraft = Pick<CommunityItem, "kind" | "title" | "description" | "location" | "attribution"> &
   { sourceUrl?: string; startsAt?: string | null; endsAt?: string | null };

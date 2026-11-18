@@ -2,7 +2,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CommunityPanel, CommunityDiscoveries } from "@workspace/community/panel";
-import { communityEventsInWindow, communityRequest, type CommunityItem } from "@workspace/community/api";
+import { communityEventsInWindow, communityRequest, type CommunityItem, type CommunityComment } from "@workspace/community/api";
 
 const item = (overrides: Partial<CommunityItem> = {}): CommunityItem => ({
   id: "event-1", kind: "event", title: "Community Thursday workshop", description: "A contributor suggestion.",
@@ -17,10 +17,13 @@ let approved: CommunityItem[];
 let own: CommunityItem[];
 let queue: CommunityItem[];
 let signedIn: boolean;
+let mineComments: CommunityComment[];
+let queueComments: CommunityComment[];
+let failDecision: boolean;
 let writes: { path: string; options: RequestInit; body: Record<string, unknown> }[];
 
 beforeEach(() => {
-  roles = []; approved = []; own = []; queue = []; signedIn = false; writes = [];
+  roles = []; approved = []; own = []; queue = []; signedIn = false; writes = []; mineComments = []; queueComments = []; failDecision = false;
   vi.stubGlobal("fetch", vi.fn(async (input: string, options: RequestInit = {}) => {
     const path = input.replace("/api", "");
     if (options.method === "POST") {
@@ -30,6 +33,8 @@ beforeEach(() => {
         own = [item({ ...body, id: "new", status: "pending", reviewedAt: null })];
         return { ok: true, json: async () => ({ item: own[0] }) };
       }
+      if (failDecision && path.startsWith("/community/moderation/")) return { ok: false, status: 400, json: async () => ({ error: "Decision service unavailable" }) };
+      if (path.startsWith("/community/moderation/comments/")) { queueComments = []; return { ok: true, json: async () => ({ status: body.decision }) }; }
       if (path.startsWith("/community/moderation/items/")) {
         approved = queue.map((record) => ({ ...record, status: "approved" as const }));
         queue = [];
@@ -37,8 +42,8 @@ beforeEach(() => {
       }
     }
     const json = path === "/auth/session" ? { authenticated: signedIn, csrfToken: "test-csrf" }
-      : path === "/community/mine" ? { roles, items: own, comments: [] }
-      : path === "/community/moderation" ? { items: queue, comments: [] }
+      : path === "/community/mine" ? { roles, items: own, comments: mineComments }
+      : path === "/community/moderation" ? { items: queue, comments: queueComments }
       : { items: approved };
     return { ok: true, json: async () => json };
   }));
@@ -93,11 +98,13 @@ describe("shared Gosie web and Week Ahead Communities", () => {
   it("moderator decisions use CSRF and refresh the approved feed separately from the queue", async () => {
     signedIn = true; roles = ["moderator"]; queue = [item({ status: "pending" })];
     render(<CommunityPanel />);
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    const reason = await screen.findByLabelText("Reason for your decision (required)");
+    fireEvent.change(reason, { target: { value: "  Clear dates, free entry, credible source.  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(await screen.findByText("Approved and now public.")).toBeInTheDocument();
     await screen.findByText("All caught up.");
     expect(writes[0].path).toBe("/community/moderation/items/event-1");
-    expect(writes[0].body).toEqual({ decision: "approved" });
+    expect(writes[0].body).toEqual({ decision: "approved", decisionReason: "Clear dates, free entry, credible source." });
     expect(screen.getByText("Community Thursday workshop")).toBeInTheDocument();
   });
   it("designated owners can send an event note for separate review", async () => {
@@ -122,6 +129,56 @@ describe("shared Gosie web and Week Ahead Communities", () => {
     expect(await screen.findByText(/Your note is waiting for review/)).toBeInTheDocument();
     expect(writes[0].body).toEqual({ text: "Synthetic practical details" });
     expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+  });
+  it("shows the people-first checklist and blocks approval or rejection until a valid reason is given", async () => {
+    signedIn = true; roles = ["moderator"]; queue = [item({ status: "pending", canReview: true })];
+    render(<CommunityPanel />);
+    expect(await screen.findByText("Before you decide, check for people first")).toBeInTheDocument();
+    await screen.findByLabelText("Reason for your decision (required)");
+    expect(screen.getByText(/not advertising-only/)).toBeInTheDocument();
+    expect(screen.getByText(/no invented verification/)).toBeInTheDocument();
+    expect(screen.getByText(/treats venues, municipalities, nonprofits/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason for your decision (required)"), { target: { value: "   too short   " } });
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    expect(screen.getByText(/Shared privately with the contributor and moderators/)).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+  });
+  it("posts a rejection reason, keeps the text after a failed request and announces the error", async () => {
+    signedIn = true; roles = ["moderator"]; failDecision = true;
+    queueComments = [{ id: "c-1", itemId: "event-1", text: "Synthetic note", attribution: "Riverside Library", status: "pending", createdAt: "2026-11-17T12:00:00Z", reviewedAt: null, canReview: true }];
+    render(<CommunityPanel />);
+    expect(await screen.findByText("Organization notes")).toBeInTheDocument();
+    expect(screen.queryByText("Restaurant notes")).not.toBeInTheDocument();
+    const reason = screen.getByLabelText("Reason for your decision (required)");
+    fireEvent.change(reason, { target: { value: "Advertising only, no practical detail." } });
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Decision service unavailable");
+    expect(reason).toHaveValue("Advertising only, no practical detail.");
+    expect(writes[0].path).toBe("/community/moderation/comments/c-1");
+    expect(writes[0].body).toEqual({ decision: "rejected", decisionReason: "Advertising only, no practical detail." });
+  });
+  it("shows cannot self-review instead of decision controls when canReview is false", async () => {
+    signedIn = true; roles = ["moderator", "contributor"]; queue = [item({ status: "pending", canReview: false })];
+    render(<CommunityPanel />);
+    expect(await screen.findByText(/You cannot review your own contribution/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Reason for your decision (required)")).not.toBeInTheDocument();
+  });
+  it("shows private decision reasons and legacy fallback in Your suggestions but never on public cards", async () => {
+    signedIn = true; roles = ["contributor", "nonprofit"];
+    approved = [item({ id: "pub", title: "Public pantry hours" })];
+    own = [item({ id: "mine-ok", title: "Approved pantry", decisionReason: "Clear hours and free access listed." }),
+      item({ id: "mine-old", title: "Legacy rejected", status: "rejected", decisionReason: null })];
+    mineComments = [{ id: "n-1", itemId: "pub", text: "Bring a bag", attribution: "Pantry", status: "approved", createdAt: "2026-11-17T12:00:00Z", reviewedAt: "2026-11-18T12:00:00Z", decisionReason: "Practical access detail." }];
+    render(<CommunityPanel />);
+    expect(await screen.findByText("Clear hours and free access listed.")).toBeInTheDocument();
+    expect(screen.getByText(/No reason was recorded for this decision/)).toBeInTheDocument();
+    expect(screen.getByText("Practical access detail.")).toBeInTheDocument();
+    const publicCard = screen.getByText("Public pantry hours").closest("article")!;
+    expect(publicCard).not.toHaveTextContent("Moderator reason");
+    expect(publicCard.querySelector(".gc-decision")).toBeNull();
   });
   it("keeps events on every actual day they overlap and evergreen gems outside date groups", async () => {
     approved = [item(), gem, item({ id: "outside", title: "Outside this week", startsAt: "2026-12-01T12:00:00Z", endsAt: "2026-12-01T14:00:00Z" })];
