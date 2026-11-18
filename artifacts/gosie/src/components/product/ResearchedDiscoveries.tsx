@@ -3,17 +3,102 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 type Discovery = {
   id: string; title: string; venue: string; region: string; category: string;
   why: string; status: string; firstSeenAt: string; lastCheckedAt: string;
+  verification: string; sourceType: "reviewed-public-research";
   flags: string[];
   dates: { publication: string | null; announcedOpening: string | null; confirmedOpening: string | null; exhibitStart: string | null; exhibitEnd: string | null };
   sources: { url: string; publisher: string; excerpt: string; publicationDate: string | null; checkedAt: string }[];
+  price: null; travelMinutes: null; accessibility: null; hours: null; availability: null;
+  constraintStatus: "not-evaluated";
 };
-type Catalog = { schemaVersion: number; revision: string | null; warning: string | null; records: Discovery[] };
+type Catalog = { schemaVersion: number; revision: string | null; checkedAt: string; warning: string | null; records: Discovery[] };
+const MAX_CATALOG_BYTES = 2 * 1024 * 1024;
+const MAX_RECORDS = 500;
+const MAX_SOURCES_PER_RECORD = 12;
+const dateFields = ["publication", "announcedOpening", "confirmedOpening", "exhibitStart", "exhibitEnd"] as const;
+const allowedFlags = ["stale", "expired", "closed", "delayed", "conflicting", "date-review"];
+const allowedStatuses = ["unknown", "announced", "open", "scheduled", "ongoing", "delayed", "closed", "conflicting"];
 const day = (value: string) => value.slice(0, 10);
+function objectValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function boundedText(value: unknown, max: number): value is string {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= max &&
+    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
+}
+function validDate(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(`${value}T12:00:00Z`)) &&
+    new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
+}
+function nullableDate(value: unknown): value is string | null {
+  return value === null || validDate(value);
+}
+function validDates(value: unknown): value is Discovery["dates"] {
+  if (!objectValue(value) ||
+      !dateFields.every((field) => Object.hasOwn(value, field) && nullableDate(value[field])) ||
+      !Object.keys(value).every((field) => dateFields.includes(field as typeof dateFields[number]))) return false;
+  return !(typeof value.exhibitStart === "string" && typeof value.exhibitEnd === "string" &&
+    value.exhibitStart > value.exhibitEnd);
+}
+function validTimestamp(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+}
 function sourceUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+    const host = url.hostname.toLowerCase();
+    const forbiddenHost = host === "localhost" || /(^|\.)(local|internal|test|invalid|example|onion)$/.test(host) ||
+      ["example.com", "example.org", "example.net"].includes(host) ||
+      /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(":");
+    return url.protocol === "https:" && !url.username && !url.password && (!url.port || url.port === "443") &&
+      host.includes(".") && !forbiddenHost ? url.href : null;
   } catch { return null; }
+}
+function validSource(value: unknown): value is Discovery["sources"][number] {
+  if (!objectValue(value) || !boundedText(value.url, 2048) || !sourceUrl(value.url) ||
+      !boundedText(value.publisher, 120) || !boundedText(value.excerpt, 280) ||
+      !validTimestamp(value.checkedAt) || !(value.publicationDate === null || validDate(value.publicationDate))) return false;
+  return Object.keys(value).every((key) => ["url", "publisher", "excerpt", "publicationDate", "checkedAt"].includes(key));
+}
+function validDiscovery(value: unknown): value is Discovery {
+  if (!objectValue(value) || !/^experience-[a-f0-9]{24}$/.test(String(value.id || "")) ||
+      !boundedText(value.title, 200) || !boundedText(value.venue, 200) || !boundedText(value.region, 120) ||
+      !["restaurant", "exhibit", "experience"].includes(String(value.category)) ||
+      !boundedText(value.why, 600) || !allowedStatuses.includes(String(value.status)) ||
+      !["unverified", "source-supported"].includes(String(value.verification)) ||
+      value.sourceType !== "reviewed-public-research" ||
+      !validTimestamp(value.firstSeenAt) || !validTimestamp(value.lastCheckedAt) ||
+      Date.parse(value.firstSeenAt as string) > Date.parse(value.lastCheckedAt as string) ||
+      !validDates(value.dates) ||
+      !Array.isArray(value.flags) || value.flags.length > 12 ||
+      !value.flags.every((flag) => typeof flag === "string" && allowedFlags.includes(flag)) ||
+      new Set(value.flags).size !== value.flags.length ||
+      !Array.isArray(value.sources) || value.sources.length < 1 || value.sources.length > MAX_SOURCES_PER_RECORD ||
+      !value.sources.every(validSource) ||
+      value.price !== null || value.travelMinutes !== null || value.accessibility !== null ||
+      value.hours !== null || value.availability !== null || value.constraintStatus !== "not-evaluated") return false;
+  const allowed = ["id", "title", "venue", "region", "category", "why", "status", "verification", "sourceType",
+    "firstSeenAt", "lastCheckedAt", "dates", "flags", "sources", "price", "travelMinutes", "accessibility",
+    "hours", "availability", "constraintStatus"];
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+function validCatalog(value: unknown): value is Catalog {
+  if (!objectValue(value) || value.schemaVersion !== 1 ||
+      !(value.revision === null || boundedText(value.revision, 120)) ||
+      !validTimestamp(value.checkedAt) ||
+      !(value.warning === null || boundedText(value.warning, 500)) ||
+      !Array.isArray(value.records) || value.records.length > MAX_RECORDS ||
+      !value.records.every(validDiscovery) ||
+      new Set(value.records.map((record) => (record as Record<string, unknown>).id)).size !== value.records.length) return false;
+  return Object.keys(value).every((key) => ["schemaVersion", "revision", "checkedAt", "warning", "records"].includes(key));
+}
+async function readCatalogResponse(response: Response): Promise<Catalog> {
+  const raw = await response.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_CATALOG_BYTES) throw new Error("catalog_response_too_large");
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { throw new Error("catalog_response_invalid"); }
+  if (!validCatalog(value)) throw new Error("catalog_response_invalid");
+  return value;
 }
 
 export default function ResearchedDiscoveries() {
@@ -33,9 +118,8 @@ export default function ResearchedDiscoveries() {
     const controller = new AbortController();
     fetch("/api/discoveries", { credentials: "same-origin", signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Approved discoveries could not be loaded.");
-        const result = await response.json() as Catalog;
-        if (result.schemaVersion !== 1 || !Array.isArray(result.records)) throw new Error("The discovery catalog is unavailable.");
+        if (!response.ok) throw new Error("catalog_unavailable");
+        const result = await readCatalogResponse(response);
         setCatalog(result);
         if (retryingRef.current) {
           const count = result.records.length;
@@ -50,7 +134,7 @@ export default function ResearchedDiscoveries() {
         if (!controller.signal.aborted) {
           retryingRef.current = false;
           setRetryBusy(false);
-          setError(cause instanceof Error ? cause.message : "Discoveries could not be loaded.");
+          setError("Reviewed discoveries are unavailable or could not be validated. No replacement content was added; the Weekend Ahead sample ideas remain separate.");
         }
       });
     return () => controller.abort();

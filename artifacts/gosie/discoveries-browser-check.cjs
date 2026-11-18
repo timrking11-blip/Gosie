@@ -15,13 +15,16 @@ function fixtures() {
   window.discoveryRequests = 0;
   const config = { weekGrouping: 'chronological', weekendInterests: [], socialContexts: [], customInterests: [],
     transportModes: [], budgetPerActivity: 50, maxTravelMinutes: 30 };
-  const record = { id: 'synthetic-only', title: 'Synthetic exhibition with a deliberately long descriptive title',
+  const record = { id: 'experience-0123456789abcdef01234567', title: 'Synthetic exhibition with a deliberately long descriptive title',
     venue: 'Synthetic public museum', region: 'Fictional region', category: 'exhibit',
     why: 'Synthetic reviewed evidence for browser verification only. Not a real listing.',
-    status: 'scheduled', flags: ['stale'], firstSeenAt: '2026-10-01T12:00:00Z', lastCheckedAt: '2026-10-02T12:00:00Z',
+    status: 'scheduled', verification: 'source-supported', sourceType: 'reviewed-public-research',
+    flags: ['stale'], firstSeenAt: '2026-10-01T12:00:00Z', lastCheckedAt: '2026-10-02T12:00:00Z',
     dates: { publication: null, announcedOpening: null, confirmedOpening: null, exhibitStart: '2026-11-01', exhibitEnd: '2026-12-31' },
     sources: [{ url: 'https://www.metmuseum.org/exhibitions', publisher: 'Synthetic source label',
-      excerpt: 'Synthetic evidence. ' + 'LongUnbrokenSourceText'.repeat(8), publicationDate: null, checkedAt: '2026-10-02T12:00:00Z' }] };
+      excerpt: 'Synthetic evidence. ' + 'LongUnbrokenSourceText'.repeat(8), publicationDate: null, checkedAt: '2026-10-02T12:00:00Z' }],
+    price: null, travelMinutes: null, accessibility: null, hours: null, availability: null, constraintStatus: 'not-evaluated' };
+  window.discoveryRecord = record;
   window.fetch = async (input, options) => {
     const url = new URL(typeof input === 'string' ? input : input.url, location.href);
     if (!url.pathname.startsWith('/api/')) return original(input, options);
@@ -37,8 +40,10 @@ function fixtures() {
       case '/api/discoveries':
         window.discoveryRequests++;
         status = window.discoveryMode === 'error' ? 503 : 200;
-        data = { schemaVersion: 1, revision: 'synthetic-browser-fixture', warning: 'Synthetic stale catalog warning.',
-          records: window.discoveryMode === 'empty' ? [] : [record] }; break;
+        data = { schemaVersion: 1, revision: 'synthetic-browser-fixture', checkedAt: '2026-10-02T12:00:00Z',
+          warning: 'Synthetic stale catalog warning.',
+          records: window.discoveryMode === 'empty' ? [] : window.discoveryMode === 'malformed'
+            ? [{ ...record, dates: { ...record.dates, publication: '2026-02-31' } }] : [record] }; break;
       default: throw new Error(`Unexpected fixture API: ${url.pathname}`);
     }
     return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -164,9 +169,19 @@ async function main() {
     const retryRequests = await evaluate('window.discoveryRequests');
     assert.equal(retryRequests, 2);
     assert.equal(await evaluate(`document.activeElement.id`), 'research-discoveries-heading');
+    const malformedInjection = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.discoveryMode='malformed'` });
+    await send('Page.reload');
+    await until(`!!document.querySelector('.reviewed-discoveries [role=alert]')`);
+    assert.equal(await evaluate(`document.querySelector('.reviewed-discoveries [role=alert]').textContent.includes('No replacement content was added')`), true);
+    assert.equal(await evaluate(`!!document.querySelector('.weekend-page .social-picker') && !!document.querySelector('.weekend-page .weekend-intro')`), true);
+    await evaluate(`document.querySelector('.social-chips button').focus()`);
+    await key('Enter', 'Enter', 13);
+    assert.equal(await evaluate(`document.activeElement.getAttribute('aria-pressed')`), 'true');
+    assert.equal(await evaluate(`document.querySelector('.reviewed-discoveries .research-cards')`), null);
+    await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: malformedInjection.identifier });
     assert.deepEqual(exceptions, []);
     const report = { mode: 'Live Chromium with isolated synthetic session and API responses; not a real authentication test',
-      results, retryRequests, empty: true, runtimeExceptions: exceptions,
+      results, retryRequests, empty: true, malformedCatalogUnavailable: true, surroundingDashboardUsable: true, runtimeExceptions: exceptions,
       limits: ['No real login, backend persistence, provider or source-page navigation tested', '200% root text scale, not OS text scaling or native-phone testing'] };
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));
