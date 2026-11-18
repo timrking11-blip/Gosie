@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useReducer, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import colors from '@/constants/colors';
+import {
+  createWeekendFeedbackState,
+  summarizeWeekendFeedback,
+  weekendContexts,
+  weekendFeedbackReducer,
+} from '../weekend-feedback';
 
 const C = colors.light;
-const contexts = ['All', 'Solo', 'Friends', 'Date', 'Group'] as const;
-type Context = (typeof contexts)[number];
+type Context = (typeof weekendContexts)[number];
 type Idea = {
   title: string;
   kind: string;
@@ -145,20 +150,22 @@ function IdeaCard({
 }
 
 export default function WeekendScreen() {
-  const [context, setContext] = useState<Context>('All');
+  const [feedback, dispatchFeedback] = useReducer(
+    weekendFeedbackReducer,
+    undefined,
+    createWeekendFeedbackState,
+  );
+  const { context, savedIdeas, dismissedIdeas, ratings } = feedback;
   const [budgetLimit, setBudgetLimit] = useState<BudgetLimit>(2);
   const [travelLimit, setTravelLimit] = useState<(typeof travelOptions)[number]>(25);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [savedIdeas, setSavedIdeas] = useState<string[]>([]);
-  const [dismissedIdeas, setDismissedIdeas] = useState<string[]>([]);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
   const withinSampleLimits = ideas.filter((idea) =>
     (budgetLimit === null || idea.budgetLevel <= budgetLimit) && idea.travelMinutes <= travelLimit,
   );
   const ranked = [...withinSampleLimits].sort((a, b) => b.fit[context] - a.fit[context]);
   const visibleIdeas = ranked.filter((idea) => !dismissedIdeas.includes(idea.title));
   const dismissedList = ideas.filter((idea) => dismissedIdeas.includes(idea.title));
-  const ratedCount = Object.keys(ratings).length;
+  const feedbackSummary = summarizeWeekendFeedback(feedback);
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" />
@@ -182,8 +189,8 @@ export default function WeekendScreen() {
           </View>
           <Text style={styles.contextPrompt}>Who's coming?</Text>
           <View style={styles.contextGroup} accessibilityRole="radiogroup" accessibilityLabel="Who's coming">
-            {contexts.map((choice) => (
-              <TouchableOpacity key={choice} onPress={() => setContext(choice)} accessibilityRole="radio" accessibilityState={{ selected: context === choice }} style={[styles.contextPill, context === choice && styles.contextSelected]}>
+            {weekendContexts.map((choice) => (
+              <TouchableOpacity key={choice} onPress={() => dispatchFeedback({ type: 'set-context', context: choice })} accessibilityRole="radio" accessibilityState={{ selected: context === choice }} style={[styles.contextPill, context === choice && styles.contextSelected]}>
                 <Text style={[styles.contextText, context === choice && styles.contextSelectedText]}>{choice}</Text>
               </TouchableOpacity>
             ))}
@@ -233,7 +240,7 @@ export default function WeekendScreen() {
           </View>
           <View style={styles.demoNotice} accessibilityLiveRegion="polite">
             <Text style={styles.demoNoticeTitle}>Demo feedback · current session only</Text>
-            <Text style={styles.demoNoticeSummary}>{savedIdeas.length} saved · {dismissedIdeas.length} dismissed · {ratedCount} rated</Text>
+            <Text style={styles.demoNoticeSummary}>{feedbackSummary.saved} saved · {feedbackSummary.dismissed} dismissed · {feedbackSummary.rated} rated</Text>
             <Text style={styles.demoNoticeBody}>These actions are temporary and local to this screen. Nothing is stored or synced; state can reset when you reload or close the app.</Text>
           </View>
 
@@ -252,11 +259,9 @@ export default function WeekendScreen() {
                 saved={savedIdeas.includes(idea.title)}
                 rating={ratings[idea.title] ?? null}
                 onToggle={() => setExpanded(expanded === idea.title ? null : idea.title)}
-                onSave={() => setSavedIdeas((current) => current.includes(idea.title)
-                  ? current.filter((title) => title !== idea.title)
-                  : [...current, idea.title])}
-                onDismiss={() => setDismissedIdeas((current) => current.includes(idea.title) ? current : [...current, idea.title])}
-                onRate={(rating) => setRatings((current) => ({ ...current, [idea.title]: rating }))}
+                onSave={() => dispatchFeedback({ type: 'toggle-saved', title: idea.title })}
+                onDismiss={() => dispatchFeedback({ type: 'dismiss', title: idea.title })}
+                onRate={(rating) => dispatchFeedback({ type: 'rate', title: idea.title, rating })}
               />
             ))}
           </View>
@@ -270,7 +275,7 @@ export default function WeekendScreen() {
                 <View key={idea.title} style={styles.dismissedRow}>
                   <Text style={styles.dismissedTitle}>{idea.title}</Text>
                   <TouchableOpacity
-                    onPress={() => setDismissedIdeas((current) => current.filter((title) => title !== idea.title))}
+                    onPress={() => dispatchFeedback({ type: 'restore', title: idea.title })}
                     accessibilityRole="button"
                     accessibilityLabel={`Restore ${idea.title}`}
                     style={styles.restoreButton}
