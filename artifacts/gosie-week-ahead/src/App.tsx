@@ -13,6 +13,7 @@ import {
 import { CommunityPanel, CommunityDiscoveries } from '@workspace/community/panel';
 import PersonalPlans from './components/PersonalPlans';
 import WeekendPreferences from './components/WeekendPreferences';
+import ReviewedDiscoveries from './components/ReviewedDiscoveries';
 import {
   defaultWeekendPreferences,
   rankSampleIdeas,
@@ -310,6 +311,7 @@ function OutingsPage() {
           <div className="weekend-note"><strong>Just an illustration</strong>This preview is not connected to live event sources. These are sample ideas, not real listings, prices, or availability.</div>
         </section>
         <WeekendPreferences onPreferencesChange={setPreferences} />
+        <ReviewedDiscoveries />
         <div className="outing-results-head">
           <h3>Fictional sample ideas</h3><span>Ordered for {preferences.context} · {ranking.included.length} in view</span>
         </div>
