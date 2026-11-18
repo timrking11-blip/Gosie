@@ -6,3 +6,4 @@
 - [Gosie discovery sources](gosie-discovery-sources.md) — keep Eventbrite and public web search distinct from the private Muse/Ticketmaster reference.
 - [Gosie Communities purpose](gosie-communities-purpose.md) — people first; organizations contribute useful local knowledge, not an advertising directory.
 - [Calendar-aware launch intent](gosie-calendar-intent.md) — launch planning must account for existing leisure commitments, not just offer calendar export.
+- [Brave Search result handling](brave-search-results.md) — connected Brave results must stay transient; never persist snippets or cached results in Gosie catalogs.

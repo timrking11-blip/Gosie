@@ -4,6 +4,7 @@ const { handleCommunity } = require('./community');
 const { demoProfiles, makeDemoWeek, currentWeekStart, addDays } = require('./demo-data');
 const { rankWeekend, validSocial } = require('./weekend-engine');
 const { readApprovedCatalog } = require('./research-catalog');
+const { searchForUser } = require('./brave-discovery');
 const {
   clearSessionCookie,
   hash,
@@ -378,6 +379,10 @@ function createApiHandler() {
       const requireCsrf = () => hasCsrf(req, session.session);
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && path !== '/auth/register' && path !== '/auth/login' && !requireCsrf()) {
         return send(res, 403, { error: 'csrf_required' });
+      }
+      if (req.method === 'POST' && path === '/discoveries/search') {
+        const result = await searchForUser(session.user.id, body);
+        return send(res, result.status, result.payload);
       }
 
       if (req.method === 'POST' && path === '/auth/logout') {

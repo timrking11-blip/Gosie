@@ -39,3 +39,8 @@ deploymentTarget = "cloudrun"
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.development]
+BRAVE_SEARCH_ENABLED = "1"

@@ -45,7 +45,7 @@ export default function ResearchedDiscoveries() {
       !catalog ? <p role="status">Loading reviewed discoveries…</p> :
         <>
           {catalog.warning && <p role="status">{catalog.warning}</p>}
-          {catalog.records.length === 0 ? <p>No current discoveries have been approved for this catalog. Research activation and source setup remain owner-controlled; no live search runs from this page.</p> :
+          {catalog.records.length === 0 ? <p>No current discoveries have been approved for the persistent catalog. On-demand public search is separate; its results are never added here.</p> :
             <div className="research-cards">{catalog.records.map((record) => <article key={record.id} className="research-discovery">
               <p className="product-eyebrow">{record.category} · Reviewed public research</p>
               <h3>{record.title}</h3>

@@ -70,6 +70,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@replit/connectors-sdk':
+        specifier: ^0.7.0
+        version: 0.7.0
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -2292,6 +2295,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@replit/connectors-sdk@0.7.0':
+    resolution: {integrity: sha512-8AXbiKo5b+0k/x/WjD5O5YIgTGYHx484bydTKLWXDLq6LW3sg0Aq1ClSjp3Mlc91NDpun47TDgIYgFIOKcj0EA==}
 
   '@replit/vite-plugin-cartographer@0.6.1':
     resolution: {integrity: sha512-t1TBE22lctrkKBB60b8K6D0BA4teO/mw9++VMEyRw2ASNZZ0Nbgmjw+ftybrl1H66mg3tSNsx204QbbeAjMsfA==}
@@ -7461,6 +7467,8 @@ snapshots:
       react-native: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)
     optionalDependencies:
       '@types/react': 19.3.0
+
+  '@replit/connectors-sdk@0.7.0': {}
 
   '@replit/vite-plugin-cartographer@0.6.1':
     dependencies:

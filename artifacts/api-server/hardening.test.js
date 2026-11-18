@@ -57,6 +57,8 @@ async function start(extraEnv = {}) {
       PORT: String(port),
       AUTH_RATE_LIMIT: '1000',
       PILOT_SIGNUPS_ENABLED: '1',
+      BRAVE_SEARCH_ENABLED: '1',
+      GOSIE_BRAVE_SEARCH_MOCK: '1',
       SESSION_SECRET: testRateSecret,
       ...extraEnv,
     },
@@ -1032,4 +1034,37 @@ test('revoked organization contributions get private, reasoned, non-publishing r
     }
     assert.equal(response.text.includes('PRIVATE synthetic'), false);
   });
+});
+
+test('Brave searches require an authenticated CSRF-protected, explicit, bounded transient request', async (t) => {
+  const api = await start({ GOSIE_BRAVE_SEARCH_MOCK: '1' });
+  const user = await makeUser(primary.port);
+  const date = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const end = new Date(Date.parse(`${date}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const body = { region: 'Brooklyn, NY', startDate: date, endDate: end, category: 'arts', termsAccepted: true };
+  try {
+    await t.test('no account or CSRF means no provider request', async () => {
+      assert.equal((await call(api.port, 'POST', '/discoveries/search', { body })).status, 401);
+      assert.equal((await call(api.port, 'POST', '/discoveries/search', { cookie: user.cookie, body })).status, 403);
+    });
+    await t.test('only coarse, allowed, consented input reaches the mocked provider', async () => {
+      for (const invalid of [
+        { ...body, termsAccepted: false }, { ...body, region: '123 Main Street, Brooklyn' },
+        { ...body, region: 'Brooklyn, NY', unexpected: 'profile data' },
+        { ...body, startDate: 'not-a-date' }, { ...body, category: 'other' },
+      ]) assert.equal((await call(api.port, 'POST', '/discoveries/search', { cookie: user.cookie, csrf: user.csrf, body: invalid })).status, 400);
+      const result = await call(api.port, 'POST', '/discoveries/search', { cookie: user.cookie, csrf: user.csrf, body });
+      assert.equal(result.status, 200);
+      assert.equal(result.json.category, 'arts');
+      assert.match(result.json.retrievedAt, /^\d{4}-\d\d-\d\dT/);
+      assert.deepEqual(result.json.results, [{
+        id: 'brave-1', title: 'Synthetic local event result', url: 'https://example.org/synthetic-event',
+        description: 'Synthetic fixture only. Not a real event.', publisher: 'example.org', age: null,
+      }]);
+      for (const field of ['region', 'startDate', 'endDate', 'query', 'profileId', 'preferences']) assert.equal(field in result.json, false);
+    });
+    await t.test('per-user limits reject repeated billable requests', async () => {
+      assert.equal((await call(api.port, 'POST', '/discoveries/search', { cookie: user.cookie, csrf: user.csrf, body })).status, 429);
+    });
+  } finally { await stop(api); }
 });
